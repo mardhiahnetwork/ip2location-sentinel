@@ -127,9 +127,9 @@ class Activator {
 				'cache_ttl'                 => 86400,
 				'block_action'              => 'template',
 				'block_redirect_url'        => '',
-				'block_page_title'          => __( 'Access Restricted (403)', 'locasentinel' ),
-				'block_page_message'        => __( 'Access from your IP address or geographical region is restricted by the site security policy.', 'locasentinel' ),
-				'comments_blocked_msg'      => __( 'Comments from your geographical region or network are not accepted on this website.', 'locasentinel' ),
+				'block_page_title'          => __( 'Access Restricted (403)', 'ip2location-sentinel' ),
+				'block_page_message'        => __( 'Access from your IP address or geographical region is restricted by the site security policy.', 'ip2location-sentinel' ),
+				'comments_blocked_msg'      => __( 'Comments from your geographical region or network are not accepted on this website.', 'ip2location-sentinel' ),
 				'delete_data_on_uninstall'  => 0,
 			);
 

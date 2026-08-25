@@ -327,7 +327,7 @@ class Webhook {
 		if ( empty( $raw_url ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Please enter a valid Webhook URL.', 'locasentinel' ),
+				'message' => __( 'Please enter a valid Webhook URL.', 'ip2location-sentinel' ),
 			);
 		}
 
@@ -366,13 +366,13 @@ class Webhook {
 		if ( $result ) {
 			return array(
 				'success' => true,
-				'message' => __( 'Webhook test payload successfully dispatched! Check your destination channel.', 'locasentinel' ),
+				'message' => __( 'Webhook test payload successfully dispatched! Check your destination channel.', 'ip2location-sentinel' ),
 			);
 		}
 
 		return array(
 			'success' => false,
-			'message' => __( 'Failed to dispatch webhook. Please check the URL, network connection, or webhook endpoint status.', 'locasentinel' ),
+			'message' => __( 'Failed to dispatch webhook. Please check the URL, network connection, or webhook endpoint status.', 'ip2location-sentinel' ),
 		);
 	}
 }
