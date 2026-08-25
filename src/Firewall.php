@@ -22,6 +22,8 @@ class Firewall {
 	public static function init(): void {
 		add_action( 'xmlrpc_call', array( __CLASS__, 'protect_xmlrpc' ), 1 );
 		add_action( 'login_init', array( __CLASS__, 'protect_login_page' ), 1 );
+		add_action( 'login_enqueue_scripts', array( __CLASS__, 'enqueue_login_assets' ) );
+		add_action( 'login_form', array( __CLASS__, 'render_login_protection_elements' ) );
 		add_filter( 'preprocess_comment', array( __CLASS__, 'protect_comments' ), 1 );
 		add_filter( 'comments_open', array( __CLASS__, 'filter_comments_open' ), 10, 2 );
 		add_filter( 'comments_array', array( __CLASS__, 'filter_comments_display' ), 10, 2 );
@@ -31,6 +33,63 @@ class Firewall {
 		add_filter( 'rest_authentication_errors', array( __CLASS__, 'protect_rest_api' ), 99 );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_frontend' ), 1 );
 		add_action( 'init', array( __CLASS__, 'check_path_rate_limit' ), 1 );
+	}
+
+	/**
+	 * Enqueue login page styling for responsive CAPTCHA and trust device checkbox.
+	 */
+	public static function enqueue_login_assets(): void {
+		?>
+		<style id="ip2loc-login-styles">
+			.ip2loc-login-captcha-wrap {
+				width: 100%;
+				margin: 14px 0 12px;
+				box-sizing: border-box;
+				display: flex;
+				justify-content: center;
+			}
+			.ip2loc-login-captcha-wrap .cf-turnstile,
+			.ip2loc-login-captcha-wrap .h-captcha,
+			.ip2loc-login-captcha-wrap .g-recaptcha {
+				width: 100% !important;
+				max-width: 100% !important;
+			}
+			.ip2loc-login-captcha-wrap iframe {
+				width: 100% !important;
+				max-width: 100% !important;
+			}
+			.ip2loc-trust-device-wrap {
+				margin: 8px 0 16px;
+			}
+			.ip2loc-trust-device-wrap label {
+				font-size: 13px;
+				color: #3c434a;
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				cursor: pointer;
+			}
+		</style>
+		<?php
+	}
+
+	/**
+	 * Render login protection elements (CAPTCHA on untrusted devices).
+	 */
+	public static function render_login_protection_elements(): void {
+		$user_id = 0;
+		if ( ! empty( $_COOKIE[ ImpossibleTravel::TRUSTED_COOKIE_NAME ] ) ) {
+			$parts = explode( '|', sanitize_text_field( wp_unslash( $_COOKIE[ ImpossibleTravel::TRUSTED_COOKIE_NAME ] ) ) );
+			if ( ! empty( $parts[0] ) ) {
+				$user_id = (int) $parts[0];
+			}
+		}
+
+		$is_trusted = ( $user_id > 0 && ImpossibleTravel::has_valid_trusted_device( $user_id ) );
+
+		if ( ! $is_trusted && Captcha::is_configured() ) {
+			echo '<div class="ip2loc-login-captcha-wrap">' . Captcha::render_widget() . '</div>';
+		}
 	}
 
 	/**
@@ -348,7 +407,7 @@ class Firewall {
 
 			return new WP_Error(
 				'ip2loc_rest_geo_blocked',
-				__( 'Access to the REST API is restricted for your geographical region.', 'locasentinel' ),
+				__( 'Access to the REST API is restricted for your geographical region.', 'ip2location-sentinel' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -421,9 +480,9 @@ class Firewall {
 		$client_ip    = $eval_result['geo']['ip'] ?? IpResolver::get_client_ip();
 		$country_code = $eval_result['geo']['country_code'] ?? '';
 		$country_name = $eval_result['geo']['country_name'] ?? '';
-		$rule_reason  = $eval_result['reason'] ?? __( 'Location or network access rule.', 'locasentinel' );
-		$custom_title = ! empty( $settings['block_page_title'] ) ? $settings['block_page_title'] : __( 'Access Restricted (403)', 'locasentinel' );
-		$custom_body  = ! empty( $settings['block_page_message'] ) ? $settings['block_page_message'] : __( 'Access from your IP address or geographical region is restricted by the site security policy.', 'locasentinel' );
+		$rule_reason  = $eval_result['reason'] ?? __( 'Location or network access rule.', 'ip2location-sentinel' );
+		$custom_title = ! empty( $settings['block_page_title'] ) ? $settings['block_page_title'] : __( 'Access Restricted (403)', 'ip2location-sentinel' );
+		$custom_body  = ! empty( $settings['block_page_message'] ) ? $settings['block_page_message'] : __( 'Access from your IP address or geographical region is restricted by the site security policy.', 'ip2location-sentinel' );
 
 		if ( file_exists( $block_template ) ) {
 			include $block_template;

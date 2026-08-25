@@ -48,8 +48,8 @@ class Admin {
 	 */
 	public static function register_admin_menus(): void {
 		add_menu_page(
-			__( 'LocaSentinel', 'locasentinel' ),
-			__( 'LocaSentinel', 'locasentinel' ),
+			__( 'IP2Location Sentinel', 'ip2location-sentinel' ),
+			__( 'IP2Location', 'ip2location-sentinel' ),
 			'manage_options',
 			'ip2location-sentinel',
 			array( __CLASS__, 'render_dashboard_page' ),
@@ -59,8 +59,8 @@ class Admin {
 
 		add_submenu_page(
 			'ip2location-sentinel',
-			__( 'Dashboard & Analytics - LocaSentinel', 'locasentinel' ),
-			__( 'Dashboard', 'locasentinel' ),
+			__( 'Dashboard - IP2Location Sentinel', 'ip2location-sentinel' ),
+			__( 'Dashboard', 'ip2location-sentinel' ),
 			'manage_options',
 			'ip2location-sentinel',
 			array( __CLASS__, 'render_dashboard_page' )
@@ -68,8 +68,8 @@ class Admin {
 
 		add_submenu_page(
 			'ip2location-sentinel',
-			__( 'Geo Firewall Rules - LocaSentinel', 'locasentinel' ),
-			__( 'Geo Firewall', 'locasentinel' ),
+			__( 'Firewall & Rules - IP2Location Sentinel', 'ip2location-sentinel' ),
+			__( 'Firewall & Rules', 'ip2location-sentinel' ),
 			'manage_options',
 			'ip2loc-rules',
 			array( __CLASS__, 'render_rules_page' )
@@ -77,26 +77,8 @@ class Admin {
 
 		add_submenu_page(
 			'ip2location-sentinel',
-			__( 'Endpoint Protection - LocaSentinel', 'locasentinel' ),
-			__( 'Endpoint Protection', 'locasentinel' ),
-			'manage_options',
-			'ip2loc-endpoints',
-			array( __CLASS__, 'render_endpoints_page' )
-		);
-
-		add_submenu_page(
-			'ip2location-sentinel',
-			__( 'Impossible Travel & 2FA - LocaSentinel', 'locasentinel' ),
-			__( 'Impossible Travel & 2FA', 'locasentinel' ),
-			'manage_options',
-			'ip2loc-impossible-travel',
-			array( __CLASS__, 'render_impossible_travel_page' )
-		);
-
-		add_submenu_page(
-			'ip2location-sentinel',
-			__( 'Security Audit Logs - LocaSentinel', 'locasentinel' ),
-			__( 'Audit Logs', 'locasentinel' ),
+			__( 'Security Audit Logs - IP2Location Sentinel', 'ip2location-sentinel' ),
+			__( 'Audit Logs', 'ip2location-sentinel' ),
 			'manage_options',
 			'ip2loc-audit-logs',
 			array( __CLASS__, 'render_audit_logs_page' )
@@ -104,20 +86,39 @@ class Admin {
 
 		add_submenu_page(
 			'ip2location-sentinel',
-			__( 'Cache & CDN Compatibility - LocaSentinel', 'locasentinel' ),
-			__( 'Cache & CDN', 'locasentinel' ),
-			'manage_options',
-			'ip2loc-cache-cdn',
-			array( __CLASS__, 'render_cache_cdn_page' )
-		);
-
-		add_submenu_page(
-			'ip2location-sentinel',
-			__( 'API Configuration & Settings - LocaSentinel', 'locasentinel' ),
-			__( 'API & Settings', 'locasentinel' ),
+			__( 'Settings & Diagnostics - IP2Location Sentinel', 'ip2location-sentinel' ),
+			__( 'Settings', 'ip2location-sentinel' ),
 			'manage_options',
 			'ip2loc-settings',
 			array( __CLASS__, 'render_settings_page' )
+		);
+
+		// Hidden child submenus for tab routing without sidebar bloat
+		add_submenu_page(
+			null,
+			__( 'Endpoint Protection - LocaSentinel', 'ip2location-sentinel' ),
+			__( 'Endpoint Protection', 'ip2location-sentinel' ),
+			'manage_options',
+			'ip2loc-endpoints',
+			array( __CLASS__, 'render_endpoints_page' )
+		);
+
+		add_submenu_page(
+			null,
+			__( 'Impossible Travel & 2FA - LocaSentinel', 'ip2location-sentinel' ),
+			__( 'Impossible Travel & 2FA', 'ip2location-sentinel' ),
+			'manage_options',
+			'ip2loc-impossible-travel',
+			array( __CLASS__, 'render_impossible_travel_page' )
+		);
+
+		add_submenu_page(
+			null,
+			__( 'Cache & CDN Compatibility - LocaSentinel', 'ip2location-sentinel' ),
+			__( 'Cache & CDN', 'ip2location-sentinel' ),
+			'manage_options',
+			'ip2loc-cache-cdn',
+			array( __CLASS__, 'render_cache_cdn_page' )
 		);
 	}
 
@@ -152,9 +153,9 @@ class Admin {
 				'ajax_url'     => admin_url( 'admin-ajax.php' ),
 				'flags_url'    => $plugin_url . 'assets/flags/',
 				'nonce'        => wp_create_nonce( 'ip2loc_admin_nonce' ),
-				'testing_text' => __( 'Testing connection...', 'locasentinel' ),
-				'sending_text' => __( 'Sending...', 'locasentinel' ),
-				'confirm_clear'=> __( 'Are you sure you want to delete all audit logs? This action cannot be undone.', 'locasentinel' ),
+				'testing_text' => __( 'Testing connection...', 'ip2location-sentinel' ),
+				'sending_text' => __( 'Sending...', 'ip2location-sentinel' ),
+				'confirm_clear'=> __( 'Are you sure you want to delete all audit logs? This action cannot be undone.', 'ip2location-sentinel' ),
 			)
 		);
 	}
@@ -187,10 +188,10 @@ class Admin {
 				?>
 				<div class="notice notice-warning is-dismissible ip2loc-admin-notice" data-notice="api_key">
 					<p>
-						<strong><?php esc_html_e( 'LocaSentinel:', 'locasentinel' ); ?></strong>
-						<?php esc_html_e( 'Please add your IP2Location.io API key to enable geolocation lookups.', 'locasentinel' ); ?>
+						<strong><?php esc_html_e( 'LocaSentinel:', 'ip2location-sentinel' ); ?></strong>
+						<?php esc_html_e( 'Please add your IP2Location.io API key to enable geolocation lookups.', 'ip2location-sentinel' ); ?>
 						<a href="<?php echo esc_url( $settings_url ); ?>" class="button button-secondary button-small" style="margin-left: 8px;">
-							<?php esc_html_e( 'Enter API Key', 'locasentinel' ); ?>
+							<?php esc_html_e( 'Enter API Key', 'ip2location-sentinel' ); ?>
 						</a>
 					</p>
 				</div>
@@ -210,7 +211,7 @@ class Admin {
 		if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] === 'true' ) {
 			?>
 			<div class="notice notice-success inline is-dismissible" style="margin: 12px 0 16px 0;">
-				<p><?php esc_html_e( 'Settings saved successfully.', 'locasentinel' ); ?></p>
+				<p><?php esc_html_e( 'Settings saved successfully.', 'ip2location-sentinel' ); ?></p>
 			</div>
 			<?php
 		}
@@ -221,10 +222,10 @@ class Admin {
 			?>
 			<div class="notice notice-error inline is-dismissible" style="margin: 12px 0 16px 0;">
 				<p>
-					<strong><?php esc_html_e( 'API Key Verification Failed:', 'locasentinel' ); ?></strong>
+					<strong><?php esc_html_e( 'API Key Verification Failed:', 'ip2location-sentinel' ); ?></strong>
 					<?php echo esc_html( $api_err_msg ); ?>
 					<br />
-					<span class="description"><?php esc_html_e( 'The invalid API key was not saved. Please verify your key on ip2location.io.', 'locasentinel' ); ?></span>
+					<span class="description"><?php esc_html_e( 'The invalid API key was not saved. Please verify your key on ip2location.io.', 'ip2location-sentinel' ); ?></span>
 				</p>
 			</div>
 			<?php
@@ -242,10 +243,10 @@ class Admin {
 			?>
 			<div class="notice notice-warning inline ip2loc-admin-notice" style="margin: 12px 0 16px 0;">
 				<p>
-					<strong><?php esc_html_e( 'LocaSentinel:', 'locasentinel' ); ?></strong>
-					<?php esc_html_e( 'Please add your IP2Location.io API key to enable geolocation lookups.', 'locasentinel' ); ?>
+					<strong><?php esc_html_e( 'LocaSentinel:', 'ip2location-sentinel' ); ?></strong>
+					<?php esc_html_e( 'Please add your IP2Location.io API key to enable geolocation lookups.', 'ip2location-sentinel' ); ?>
 					<a href="<?php echo esc_url( $settings_url ); ?>" class="button button-secondary button-small" style="margin-left: 8px;">
-						<?php esc_html_e( 'Enter API Key', 'locasentinel' ); ?>
+						<?php esc_html_e( 'Enter API Key', 'ip2location-sentinel' ); ?>
 					</a>
 				</p>
 			</div>
@@ -436,9 +437,11 @@ class Admin {
 		}
 
 		// 4. Cache & CDN Tab
-		if ( $tab === 'cache_cdn' || isset( $input['cdn_mode'] ) ) {
-			$current['cdn_mode']          = isset( $input['cdn_mode'] ) && in_array( $input['cdn_mode'], array( 'auto', 'cloudflare', 'sucuri', 'x_forwarded_for', 'remote_addr' ), true ) ? $input['cdn_mode'] : 'auto';
-			$current['enable_cache_vary'] = ! empty( $input['enable_cache_vary'] ) ? 1 : 0;
+		if ( $tab === 'cache_cdn' || isset( $input['cdn_mode'] ) || isset( $input['strict_proxy_verification'] ) ) {
+			$current['cdn_mode']                  = isset( $input['cdn_mode'] ) && in_array( $input['cdn_mode'], array( 'auto', 'cloudflare', 'sucuri', 'x_forwarded_for', 'remote_addr' ), true ) ? $input['cdn_mode'] : 'auto';
+			$current['enable_cache_vary']         = ! empty( $input['enable_cache_vary'] ) ? 1 : 0;
+			$current['strict_proxy_verification'] = ! empty( $input['strict_proxy_verification'] ) ? 1 : 0;
+			$current['trusted_proxies']           = isset( $input['trusted_proxies'] ) ? sanitize_textarea_field( wp_unslash( $input['trusted_proxies'] ) ) : '';
 		}
 
 		// 5. API & Settings Tab
@@ -533,7 +536,7 @@ class Admin {
 		check_ajax_referer( 'ip2loc_admin_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'locasentinel' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ip2location-sentinel' ) ) );
 		}
 
 		$url            = isset( $_POST['url'] ) ? sanitize_text_field( wp_unslash( $_POST['url'] ) ) : '';
@@ -611,7 +614,7 @@ class Admin {
 		check_ajax_referer( 'ip2loc_admin_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'locasentinel' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ip2location-sentinel' ) ) );
 		}
 
 		$current = get_option( 'ip2loc_settings', array() );
@@ -693,7 +696,7 @@ class Admin {
 				if ( ! empty( $new_key ) && $new_key !== ( $current['api_key'] ?? '' ) ) {
 					$test_res = ApiClient::test_api_key( $new_key );
 					if ( ! $test_res['success'] ) {
-						wp_send_json_error( array( 'message' => $test_res['message'] ?? __( 'Invalid API Key.', 'locasentinel' ) ) );
+						wp_send_json_error( array( 'message' => $test_res['message'] ?? __( 'Invalid API Key.', 'ip2location-sentinel' ) ) );
 					}
 					$current['api_key'] = $new_key;
 					delete_option( 'ip2loc_last_api_error' );
@@ -718,7 +721,7 @@ class Admin {
 		}
 
 		update_option( 'ip2loc_settings', $current );
-		wp_send_json_success( array( 'message' => __( 'Settings saved automatically.', 'locasentinel' ) ) );
+		wp_send_json_success( array( 'message' => __( 'Settings saved automatically.', 'ip2location-sentinel' ) ) );
 	}
 
 	/**
@@ -728,7 +731,7 @@ class Admin {
 		check_ajax_referer( 'ip2loc_admin_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'locasentinel' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'ip2location-sentinel' ) ), 403 );
 		}
 
 		$search   = isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '';
@@ -756,20 +759,20 @@ class Admin {
 			?>
 			<div class="tablenav bottom" style="margin-top: 12px;">
 				<div class="tablenav-pages">
-					<span class="displaying-num"><?php echo sprintf( esc_html__( '%s items', 'locasentinel' ), number_format_i18n( $log_data['total_count'] ) ); ?></span>
+					<span class="displaying-num"><?php echo sprintf( esc_html__( '%s items', 'ip2location-sentinel' ), number_format_i18n( $log_data['total_count'] ) ); ?></span>
 					<div class="pagination-links">
 						<?php if ( $log_data['page'] > 1 ) : ?>
-							<a class="first-page button ip2loc-ajax-page" data-paged="1" href="#"><span class="screen-reader-text"><?php esc_html_e( 'First page', 'locasentinel' ); ?></span><span aria-hidden="true">&laquo;</span></a>
-							<a class="prev-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['page'] - 1 ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Previous page', 'locasentinel' ); ?></span><span aria-hidden="true">&lsaquo;</span></a>
+							<a class="first-page button ip2loc-ajax-page" data-paged="1" href="#"><span class="screen-reader-text"><?php esc_html_e( 'First page', 'ip2location-sentinel' ); ?></span><span aria-hidden="true">&laquo;</span></a>
+							<a class="prev-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['page'] - 1 ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Previous page', 'ip2location-sentinel' ); ?></span><span aria-hidden="true">&lsaquo;</span></a>
 						<?php endif; ?>
 						<span class="paging-input">
 							<span class="tablenav-paging-text">
-								<?php echo esc_html( $log_data['page'] ); ?> <?php esc_html_e( 'of', 'locasentinel' ); ?> <span class="total-pages"><?php echo esc_html( $log_data['total_pages'] ); ?></span>
+								<?php echo esc_html( $log_data['page'] ); ?> <?php esc_html_e( 'of', 'ip2location-sentinel' ); ?> <span class="total-pages"><?php echo esc_html( $log_data['total_pages'] ); ?></span>
 							</span>
 						</span>
 						<?php if ( $log_data['page'] < $log_data['total_pages'] ) : ?>
-							<a class="next-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['page'] + 1 ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Next page', 'locasentinel' ); ?></span><span aria-hidden="true">&rsaquo;</span></a>
-							<a class="last-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['total_pages'] ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Last page', 'locasentinel' ); ?></span><span aria-hidden="true">&raquo;</span></a>
+							<a class="next-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['page'] + 1 ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Next page', 'ip2location-sentinel' ); ?></span><span aria-hidden="true">&rsaquo;</span></a>
+							<a class="last-page button ip2loc-ajax-page" data-paged="<?php echo ( $log_data['total_pages'] ); ?>" href="#"><span class="screen-reader-text"><?php esc_html_e( 'Last page', 'ip2location-sentinel' ); ?></span><span aria-hidden="true">&raquo;</span></a>
 						<?php endif; ?>
 					</div>
 				</div>
@@ -819,7 +822,7 @@ class Admin {
 							<?php echo Countries::get_flag_html( $row['country_code'] ); ?>
 							<?php echo esc_html( ( $row['city_name'] ? $row['city_name'] . ', ' : '' ) . $row['country_code'] ); ?>
 						<?php else : ?>
-							<span class="description"><?php esc_html_e( 'Unknown', 'locasentinel' ); ?></span>
+							<span class="description"><?php esc_html_e( 'Unknown', 'ip2location-sentinel' ); ?></span>
 						<?php endif; ?>
 					</td>
 					<td>
@@ -849,8 +852,8 @@ class Admin {
 						</span>
 						<?php if ( $hit_count > 1 ) : ?>
 							<br />
-							<span class="ip2loc-pill pill-warning" style="font-size: 10px; margin-top: 3px; display: inline-block;" title="<?php echo esc_attr( sprintf( __( '%d identical requests aggregated', 'locasentinel' ), $hit_count ) ); ?>">
-								<?php echo sprintf( esc_html__( '%d× hits', 'locasentinel' ), $hit_count ); ?>
+							<span class="ip2loc-pill pill-warning" style="font-size: 10px; margin-top: 3px; display: inline-block;" title="<?php echo esc_attr( sprintf( __( '%d identical requests aggregated', 'ip2location-sentinel' ), $hit_count ) ); ?>">
+								<?php echo sprintf( esc_html__( '%d× hits', 'ip2location-sentinel' ), $hit_count ); ?>
 							</span>
 						<?php endif; ?>
 					</td>
@@ -874,7 +877,7 @@ class Admin {
 							<small class="description"><?php echo esc_html( $os_name ); ?></small>
 							<?php if ( ! empty( $user_agent_str ) && $user_agent_str !== 'None / Empty User-Agent' ) : ?>
 								<details style="margin-top: 4px;">
-									<summary style="cursor: pointer; font-size: 11px; color: #2271b1;"><?php esc_html_e( 'View Full UA', 'locasentinel' ); ?></summary>
+									<summary style="cursor: pointer; font-size: 11px; color: #2271b1;"><?php esc_html_e( 'View Full UA', 'ip2location-sentinel' ); ?></summary>
 									<code style="display: block; font-size: 10px; line-height: 1.3; word-break: break-all; max-width: 280px; white-space: normal; margin-top: 4px; padding: 4px 6px; background: #f0f0f1; border-radius: 3px;"><?php echo esc_html( $user_agent_str ); ?></code>
 								</details>
 							<?php endif; ?>
@@ -886,7 +889,7 @@ class Admin {
 			<tr>
 				<td colspan="9" style="text-align: center; padding: 30px;">
 					<div class="ip2loc-empty-state">
-						<p><?php esc_html_e( 'No log entries found.', 'locasentinel' ); ?></p>
+						<p><?php esc_html_e( 'No log entries found.', 'ip2location-sentinel' ); ?></p>
 					</div>
 				</td>
 			</tr>

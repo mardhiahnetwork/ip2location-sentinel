@@ -345,8 +345,8 @@ class Captcha {
 			include $template;
 		} else {
 			wp_die(
-				esc_html__( 'Security verification required. Please complete the challenge to proceed.', 'locasentinel' ),
-				esc_html__( '429 Security Challenge', 'locasentinel' ),
+				esc_html__( 'Security verification required. Please complete the challenge to proceed.', 'ip2location-sentinel' ),
+				esc_html__( '429 Security Challenge', 'ip2location-sentinel' ),
 				array( 'response' => 429 )
 			);
 		}

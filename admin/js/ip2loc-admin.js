@@ -200,10 +200,18 @@
 			}
 		}
 
-		$(document).on('click', '.nav-tab-wrapper a.nav-tab', function(e) {
-			e.preventDefault();
+		$(document).on('click', '.nav-tab-wrapper.ip2loc-tabs a.nav-tab, .ip2loc-child-tabs a.nav-tab', function(e) {
 			var $clickedTab = $(this);
-			var tabTarget = $clickedTab.data('tab') || ($clickedTab.attr('href') ? $clickedTab.attr('href').replace(/^.*#/, '') : '');
+			var href = $clickedTab.attr('href') || '';
+			var dataTab = $clickedTab.data('tab');
+
+			// If it's a real page navigation link (e.g. admin.php?page=...), let normal browser navigation proceed
+			if (!dataTab && (!href || href.indexOf('#') === -1 || href.charAt(0) !== '#')) {
+				return;
+			}
+
+			e.preventDefault();
+			var tabTarget = dataTab || href.replace(/^.*#/, '');
 
 			// Auto-Save pending changes before switching
 			if (isFormDirty) {

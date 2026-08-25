@@ -5,6 +5,9 @@
  * @package IP2Location\Sentinel
  */
 
+use IP2Location\Sentinel\Admin;
+use IP2Location\Sentinel\Countries;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,9 +17,9 @@ $is_api_ready = ! empty( $api_key );
 ?>
 
 <div class="wrap ip2loc-wrap">
-	<h1><?php esc_html_e( 'LocaSentinel Dashboard', 'locasentinel' ); ?></h1>
+	<h1><?php esc_html_e( 'IP2Location Sentinel Dashboard', 'ip2location-sentinel' ); ?></h1>
 	<hr class="wp-header-end">
-	<?php \IP2Location\Sentinel\Admin::render_plugin_header_notices(); ?>
+	<?php Admin::render_plugin_header_notices(); ?>
 
 	<!-- Action Toolbar below title -->
 	<div class="ip2loc-action-bar">
@@ -85,7 +88,7 @@ $is_api_ready = ! empty( $api_key );
 					<?php esc_html_e( 'Check the geolocation data and rule verdict for any IP address.', 'ip2location-sentinel' ); ?>
 				</p>
 				<div class="ip2loc-lookup-form">
-					<input type="text" id="ip2loc_test_ip_input" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. 8.8.8.8', 'locasentinel' ); ?>" value="" />
+					<input type="text" id="ip2loc_test_ip_input" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. 8.8.8.8', 'ip2location-sentinel' ); ?>" value="" />
 					<button type="button" id="ip2loc_btn_run_lookup" class="button button-primary">
 						<?php esc_html_e( 'Inspect IP', 'ip2location-sentinel' ); ?>
 					</button>
@@ -153,8 +156,8 @@ $is_api_ready = ! empty( $api_key );
 							<?php foreach ( $stats['top_countries'] as $row ) : ?>
 								<tr>
 									<td>
-										<?php echo \IP2Location\Sentinel\Countries::get_flag_html( $row['country_code'] ); ?>
-										<strong><?php echo esc_html( $row['country_name'] ?: \IP2Location\Sentinel\Countries::get_country_name( $row['country_code'] ) ); ?></strong>
+										<?php echo Countries::get_flag_html( $row['country_code'] ); ?>
+										<strong><?php echo esc_html( $row['country_name'] ?: Countries::get_country_name( $row['country_code'] ) ); ?></strong>
 									</td>
 									<td><code><?php echo esc_html( $row['country_code'] ); ?></code></td>
 									<td style="text-align:right;">

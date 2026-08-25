@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       LocaSentinel – Geo-Security & Fraud Prevention for IP2Location
+ * Plugin Name:       IP2Location Sentinel – Geo-Security & Fraud Prevention
  * Plugin URI:        https://www.ip2location.io
  * Description:       Geo-blocking firewall, impossible travel 2FA verification, comment spam filtering, and proxy detection powered by IP2Location.io.
  * Version:           1.0.0
@@ -10,10 +10,10 @@
  * Author URI:        mailto:mardhiahnetwork@gmail.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       locasentinel
+ * Text Domain:       ip2location-sentinel
  * Domain Path:       /languages
  *
- * @package           LocaSentinel
+ * @package           IP2Location_Sentinel
  * @author            Mardhiah Air Network <mardhiahnetwork@gmail.com>
  */
 

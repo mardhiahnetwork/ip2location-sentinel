@@ -1,11 +1,12 @@
-<?php
+use IP2Location\Sentinel\IpResolver;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$custom_title = isset( $custom_title ) && ! empty( $custom_title ) ? $custom_title : ( isset( $block_title ) && ! empty( $block_title ) ? $block_title : __( 'Access Restricted (403)', 'locasentinel' ) );
-$custom_body  = isset( $custom_body ) && ! empty( $custom_body ) ? $custom_body : ( isset( $block_message ) && ! empty( $block_message ) ? $block_message : __( 'Access from your IP address or geographical region is restricted by site security policy.', 'locasentinel' ) );
-$client_ip    = isset( $client_ip ) && ! empty( $client_ip ) ? $client_ip : \IP2Location\Sentinel\IpResolver::mask_ip_for_privacy( \IP2Location\Sentinel\IpResolver::get_client_ip() );
+$custom_title = isset( $custom_title ) && ! empty( $custom_title ) ? $custom_title : ( isset( $block_title ) && ! empty( $block_title ) ? $block_title : __( 'Access Restricted (403)', 'ip2location-sentinel' ) );
+$custom_body  = isset( $custom_body ) && ! empty( $custom_body ) ? $custom_body : ( isset( $block_message ) && ! empty( $block_message ) ? $block_message : __( 'Access from your IP address or geographical region is restricted by site security policy.', 'ip2location-sentinel' ) );
+$client_ip    = isset( $client_ip ) && ! empty( $client_ip ) ? $client_ip : IpResolver::mask_ip_for_privacy( IpResolver::get_client_ip() );
 $incident_id  = isset( $incident_id ) && ! empty( $incident_id ) ? $incident_id : 'INC-' . strtoupper( substr( md5( $client_ip . time() ), 0, 10 ) );
 ?>
 <!DOCTYPE html>
@@ -131,19 +132,19 @@ $incident_id  = isset( $incident_id ) && ! empty( $incident_id ) ? $incident_id 
 
 	<div class="wp-error-meta">
 		<div class="wp-error-row">
-			<span class="wp-error-label"><?php esc_html_e( 'Incident ID', 'locasentinel' ); ?></span>
+			<span class="wp-error-label"><?php esc_html_e( 'Incident ID', 'ip2location-sentinel' ); ?></span>
 			<span class="wp-error-value"><?php echo esc_html( $incident_id ); ?></span>
 		</div>
 		<div class="wp-error-row">
-			<span class="wp-error-label"><?php esc_html_e( 'Client IP', 'locasentinel' ); ?></span>
+			<span class="wp-error-label"><?php esc_html_e( 'Client IP', 'ip2location-sentinel' ); ?></span>
 			<span class="wp-error-value"><?php echo esc_html( $client_ip ); ?></span>
 		</div>
 	</div>
 
 	<div class="wp-error-actions">
-		<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="button"><?php esc_html_e( 'Return to Homepage', 'locasentinel' ); ?></a>
+		<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="button"><?php esc_html_e( 'Return to Homepage', 'ip2location-sentinel' ); ?></a>
 		<p class="wp-error-footer">
-			<?php esc_html_e( 'Protected by LocaSentinel', 'locasentinel' ); ?> &bull; <a href="https://www.ip2location.io" target="_blank" rel="noopener noreferrer">IP2Location.io</a>
+			<?php esc_html_e( 'Protected by LocaSentinel', 'ip2location-sentinel' ); ?> &bull; <a href="https://www.ip2location.io" target="_blank" rel="noopener noreferrer">IP2Location.io</a>
 		</p>
 	</div>
 </body>

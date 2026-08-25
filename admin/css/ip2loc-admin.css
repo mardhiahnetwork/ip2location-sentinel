@@ -136,7 +136,39 @@
 	100% { transform: rotate(360deg); }
 }
 
-/* Native WordPress Tabs Integration & Perfect Alignment */
+/* Parent Section Hub Navigation */
+.ip2loc-parent-nav {
+	margin-top: 12px;
+	margin-bottom: 14px !important;
+	border-bottom: 2px solid #2271b1;
+	background: transparent;
+	padding-bottom: 0 !important;
+}
+
+.ip2loc-parent-nav .nav-tab {
+	font-size: 13px;
+	font-weight: 600;
+	padding: 7px 16px;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-bottom: none;
+	color: #50575e;
+	transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ip2loc-parent-nav .nav-tab:hover {
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+.ip2loc-parent-nav .nav-tab.nav-tab-active {
+	background: #2271b1 !important;
+	color: #fff !important;
+	border-color: #2271b1 !important;
+	margin-bottom: 0 !important;
+}
+
+/* Native WordPress In-Page Tabs */
 .nav-tab-wrapper.ip2loc-tabs {
 	margin-top: 12px;
 	margin-bottom: 0 !important;
