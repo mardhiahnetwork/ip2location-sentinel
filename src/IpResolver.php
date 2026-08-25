@@ -328,6 +328,6 @@ class IpResolver {
 			return '127.0.0.1 (Direct Connection)';
 		}
 
-		return '198.51.100.44 (Demo Resolver)';
+		return $ip;
 	}
 }
