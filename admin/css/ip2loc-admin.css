@@ -1,0 +1,808 @@
+/**
+ * IP2Location Sentinel Admin Stylesheet
+ *
+ * @package IP2Location\Sentinel
+ */
+
+.ip2loc-wrap {
+	max-width: 1200px;
+	margin: 20px 20px 40px 0;
+}
+
+/* Grids */
+.ip2loc-grid {
+	display: grid;
+	gap: 20px;
+	margin-bottom: 24px;
+}
+
+.ip2loc-stats-grid {
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	margin-top: 15px;
+}
+
+.ip2loc-two-col {
+	grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+}
+
+/* KPI Stat Cards (Only Icons Kept as Requested) */
+.ip2loc-stat-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ip2loc-stat-icon {
+	width: 42px;
+	height: 42px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ip2loc-stat-icon span {
+	font-size: 22px;
+	width: 22px;
+	height: 22px;
+	color: #fff;
+}
+
+.stat-events { background: #2271b1; }
+.stat-blocked { background: #d63638; }
+.stat-spam { background: #8c5cf6; }
+.stat-travel { background: #dba617; }
+
+.ip2loc-stat-data {
+	display: flex;
+	flex-direction: column;
+}
+
+.ip2loc-stat-number {
+	font-size: 22px;
+	font-weight: 600;
+	color: #1d2327;
+	line-height: 1.2;
+}
+
+.ip2loc-stat-label {
+	font-size: 12px;
+	color: #646970;
+}
+
+/* Header with Auto-Save Badge */
+.ip2loc-header-wrap {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.ip2loc-header-wrap h1 {
+	margin: 0;
+}
+
+.ip2loc-autosave-badge {
+	display: none;
+	align-items: center;
+	gap: 6px;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	color: #166534;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 4px 12px;
+	border-radius: 20px;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ip2loc-autosave-badge .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: #16a34a;
+	line-height: 16px;
+}
+
+.ip2loc-autosave-badge.is-saving {
+	background: #eff6ff;
+	border-color: #bfdbfe;
+	color: #1e40af;
+}
+
+.ip2loc-autosave-badge.is-saving .dashicons {
+	color: #3b82f6;
+	animation: ip2loc-spin 1s linear infinite;
+}
+
+.ip2loc-autosave-badge.is-error {
+	background: #fef2f2;
+	border-color: #fecaca;
+	color: #991b1b;
+}
+
+.ip2loc-autosave-badge.is-error .dashicons {
+	color: #dc2626;
+}
+
+@keyframes ip2loc-spin {
+	100% { transform: rotate(360deg); }
+}
+
+/* Native WordPress Tabs Integration & Perfect Alignment */
+.nav-tab-wrapper.ip2loc-tabs {
+	margin-top: 12px;
+	margin-bottom: 0 !important;
+	border-bottom: 1px solid #c3c4c7;
+	padding-left: 0 !important;
+	padding-bottom: 0 !important;
+}
+
+.nav-tab-wrapper.ip2loc-tabs .nav-tab:first-child,
+.nav-tab-wrapper.ip2loc-tabs .nav-tab:first-of-type {
+	margin-left: 0 !important;
+}
+
+.nav-tab-wrapper.ip2loc-tabs .nav-tab.nav-tab-active {
+	background: #fff !important;
+	color: #1d2327 !important;
+	border-bottom: 1px solid #fff !important;
+	margin-bottom: -1px !important;
+}
+
+.ip2loc-tab-pane {
+	display: none;
+}
+
+.ip2loc-tab-pane.ip2loc-tab-active {
+	display: block;
+}
+
+.ip2loc-tab-pane > .ip2loc-card:first-child {
+	border-top: none !important;
+	border-top-left-radius: 0 !important;
+	border-top-right-radius: 4px;
+	margin-top: 0 !important;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Local SVG Country Flags */
+.ip2loc-flag-img {
+	display: inline-block;
+	width: 18px;
+	height: 13px;
+	object-fit: cover;
+	vertical-align: -2px;
+	margin-right: 6px;
+	border-radius: 1px;
+	box-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.ip2loc-select2-flag {
+	display: inline-block;
+	width: 16px;
+	height: 12px;
+	object-fit: cover;
+	vertical-align: -1px;
+	margin-right: 6px;
+	border-radius: 1px;
+	box-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+select.ip2loc-select2:not(.select2-hidden-accessible) {
+	opacity: 0;
+	height: 38px;
+	pointer-events: none;
+}
+
+/* Cards */
+.ip2loc-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	margin-bottom: 20px;
+}
+
+.ip2loc-card-header {
+	margin-bottom: 14px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.ip2loc-card-header h2 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+/* Presets Bar */
+.ip2loc-preset-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+}
+
+.ip2loc-preset-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #646970;
+	margin-right: 2px;
+}
+
+.ip2loc-preset-btn {
+	font-size: 11px !important;
+	height: 26px !important;
+	line-height: 24px !important;
+	padding: 0 8px !important;
+}
+
+/* Action Toolbar */
+.ip2loc-action-bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 16px 0 20px 0;
+}
+
+/* Country Selection Summary Bar */
+.ip2loc-country-summary-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	background: #f0f6fc;
+	border: 1px solid #c8d7e1;
+	border-radius: 4px;
+	padding: 8px 14px;
+	margin-bottom: 10px;
+	max-width: 700px;
+}
+
+.ip2loc-country-summary-bar button {
+	margin-left: auto !important;
+}
+
+/* Select2 Enhancements & Individual Tag Remove (x) Fix */
+.select2-container--default .select2-selection--multiple {
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	min-height: 36px;
+	padding: 2px 4px;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	background-color: #f0f6fc;
+	border: 1px solid #c8d7e1;
+	border-radius: 3px;
+	padding: 3px 8px 3px 22px !important;
+	margin: 3px 4px 3px 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #1d2327;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+	position: absolute !important;
+	left: 4px !important;
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	color: #646970 !important;
+	font-size: 14px !important;
+	font-weight: 700 !important;
+	line-height: 1 !important;
+	padding: 0 2px !important;
+	margin: 0 !important;
+	height: auto !important;
+	min-height: auto !important;
+	cursor: pointer;
+	border-radius: 2px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+	color: #d63638 !important;
+	background: rgba(214, 54, 56, 0.15) !important;
+}
+
+/* Toggles */
+.ip2loc-toggle-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+}
+
+.ip2loc-toggle-text {
+	font-size: 13px;
+	color: #1d2327;
+}
+
+/* Pills & Badges */
+.ip2loc-pill {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.pill-danger { background: #fbeae5; color: #d63638; }
+.pill-warning { background: #fef3d6; color: #996800; }
+.pill-success { background: #edfaef; color: #008a20; }
+.pill-info { background: #f0f6fc; color: #2271b1; }
+
+/* Variable / Token Chips */
+.ip2loc-chip {
+	display: inline-block;
+	margin: 2px 3px 2px 0;
+	padding: 2px 7px;
+	font-size: 11px;
+	background: #f1f5f9;
+	border: 1px solid #cbd5e1;
+	border-radius: 4px;
+	color: #1e293b;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	user-select: all;
+	font-family: Consolas, Monaco, monospace;
+}
+
+.ip2loc-chip:hover {
+	background: #e2e8f0;
+	border-color: #2271b1;
+	color: #2271b1;
+	transform: translateY(-1px);
+}
+
+.ip2loc-chip.chip-copied {
+	background: #dcfce7 !important;
+	border-color: #86efac !important;
+	color: #15803d !important;
+}
+
+.ip2loc-flag {
+	margin-right: 4px;
+	font-size: 14px;
+}
+
+/* Module Status List */
+.ip2loc-module-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.ip2loc-module-list li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.ip2loc-module-list li:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.module-status {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin-right: 10px;
+	flex-shrink: 0;
+}
+
+.status-active {
+	background: #16a34a;
+	box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.status-inactive {
+	background: #cbd5e1;
+}
+
+.module-title {
+	flex-grow: 1;
+	font-weight: 500;
+	color: #2c3338;
+	font-size: 13px;
+}
+
+.module-badge {
+	font-size: 11px;
+	color: #646970;
+}
+
+/* Cache Grid */
+.ip2loc-cache-grid {
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.ip2loc-cache-item {
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 12px;
+	background: #f6f7f7;
+}
+
+.ip2loc-cache-item.cache-active {
+	border-color: #86efac;
+	background: #f0fdf4;
+}
+
+.cache-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.cache-title {
+	font-weight: 600;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.cache-badge {
+	font-size: 10px;
+	padding: 1px 5px;
+	border-radius: 3px;
+	font-weight: 600;
+}
+
+.badge-on { background: #dcfce7; color: #166534; }
+.badge-off { background: #e2e8f0; color: #64748b; }
+
+.cache-type {
+	font-size: 11px;
+	color: #646970;
+	margin: 0 0 4px 0;
+}
+
+.cache-notes {
+	font-size: 12px;
+	color: #50575e;
+	margin: 0;
+}
+
+/* SMTP Box */
+.ip2loc-smtp-box {
+	display: flex;
+	gap: 12px;
+	padding: 14px;
+	border-radius: 4px;
+	border: 1px solid;
+}
+
+.smtp-safe {
+	background: #f0fdf4;
+	border-color: #bbf7d0;
+}
+
+.smtp-warning {
+	background: #fffbeb;
+	border-color: #fde68a;
+}
+
+.smtp-status-details h4 {
+	margin: 0 0 4px 0;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.smtp-status-details p {
+	margin: 0;
+	font-size: 12px;
+	color: #50575e;
+}
+
+/* Inline Test Toolbars */
+.ip2loc-inline-test {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.ip2loc-lookup-form {
+	display: flex;
+	gap: 8px;
+}
+
+.ip2loc-lookup-form input {
+	flex-grow: 1;
+}
+
+.ip2loc-lookup-box {
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 14px;
+}
+
+/* Empty State */
+.ip2loc-empty-state {
+	text-align: center;
+	padding: 24px;
+	color: #8c8f94;
+}
+
+/* Filter Card */
+.ip2loc-filter-card {
+	padding: 12px 16px;
+	margin-bottom: 16px;
+}
+
+.ip2loc-filter-form {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+/* Log Table */
+.ip2loc-table-responsive {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin-bottom: 0;
+}
+
+.ip2loc-table th {
+	font-weight: 600;
+	color: #2c3338;
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.ip2loc-table td {
+	font-size: 12px;
+	vertical-align: middle;
+}
+
+/* HTTP Method Badges & Request URL Display */
+.ip2loc-endpoint-cell {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.ip2loc-method-badge {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 3px;
+	line-height: 1.2;
+	text-transform: uppercase;
+	font-family: monospace;
+	letter-spacing: 0.5px;
+	flex-shrink: 0;
+}
+
+.ip2loc-method-badge.method-get {
+	background: #e0f2fe;
+	color: #0369a1;
+	border: 1px solid #bae6fd;
+}
+
+.ip2loc-method-badge.method-post {
+	background: #dcfce7;
+	color: #15803d;
+	border: 1px solid #bbf7d0;
+}
+
+.ip2loc-method-badge.method-put,
+.ip2loc-method-badge.method-patch {
+	background: #fef3c7;
+	color: #b45309;
+	border: 1px solid #fde68a;
+}
+
+.ip2loc-method-badge.method-delete {
+	background: #fee2e2;
+	color: #b91c1c;
+	border: 1px solid #fecaca;
+}
+
+.ip2loc-method-badge.method-head,
+.ip2loc-method-badge.method-options {
+	background: #f1f5f9;
+	color: #475569;
+	border: 1px solid #e2e8f0;
+}
+
+.ip2loc-endpoint-url {
+	font-size: 11px;
+	max-width: 280px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: inline-block;
+	vertical-align: middle;
+	background: #f6f7f7;
+	padding: 2px 6px;
+	border-radius: 3px;
+	border: 1px solid #dcdcde;
+}
+
+/* ==========================================================================
+   Mobile Responsiveness (<= 782px WordPress Admin Breakpoint)
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+	.ip2loc-wrap {
+		margin: 10px 10px 30px 0;
+	}
+
+	.ip2loc-action-bar {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.ip2loc-action-bar .button {
+		width: 100%;
+		justify-content: center;
+		height: 36px;
+		line-height: 34px;
+	}
+
+	.ip2loc-action-bar form {
+		width: 100%;
+	}
+
+	.ip2loc-two-col {
+		grid-template-columns: 1fr !important;
+		gap: 16px;
+	}
+
+	.ip2loc-stats-grid {
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
+
+	.ip2loc-stat-card {
+		padding: 12px;
+		gap: 10px;
+	}
+
+	.ip2loc-stat-icon {
+		width: 36px;
+		height: 36px;
+	}
+
+	.ip2loc-stat-icon span {
+		font-size: 18px;
+		width: 18px;
+		height: 18px;
+	}
+
+	.ip2loc-stat-number {
+		font-size: 18px;
+	}
+
+	.ip2loc-card {
+		padding: 16px;
+		margin-bottom: 16px;
+	}
+
+	.ip2loc-lookup-form {
+		flex-direction: column;
+	}
+
+	.ip2loc-lookup-form input {
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	.ip2loc-lookup-form button {
+		width: 100%;
+		justify-content: center;
+		height: 36px;
+	}
+
+	.ip2loc-inline-test {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.ip2loc-inline-test input {
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	.ip2loc-inline-test button {
+		width: 100%;
+		justify-content: center;
+		height: 36px;
+	}
+
+	.ip2loc-filter-form {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.ip2loc-filter-form .filter-item,
+	.ip2loc-filter-form input[type="search"],
+	.ip2loc-filter-form select,
+	.ip2loc-filter-form button,
+	.ip2loc-filter-form a.button {
+		width: 100% !important;
+		max-width: 100% !important;
+		box-sizing: border-box;
+	}
+
+	.ip2loc-preset-bar {
+		gap: 4px;
+	}
+
+	.ip2loc-preset-label {
+		width: 100%;
+		margin-bottom: 4px;
+	}
+
+	.select2-container {
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	.ip2loc-cache-grid {
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
+
+	.ip2loc-smtp-box {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	table.form-table th {
+		padding-bottom: 4px !important;
+	}
+
+	table.form-table td {
+		padding-top: 4px !important;
+	}
+
+	table.form-table input.regular-text,
+	table.form-table input.large-text,
+	table.form-table select,
+	table.form-table textarea {
+		width: 100% !important;
+		max-width: 100% !important;
+		box-sizing: border-box;
+	}
+}
+
+@media screen and (max-width: 480px) {
+	.ip2loc-stats-grid {
+		grid-template-columns: 1fr;
+	}
+}

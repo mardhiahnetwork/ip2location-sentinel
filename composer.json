@@ -1,0 +1,20 @@
+{
+    "name": "mardhiah/ip2location-sentinel",
+    "description": "GeoIP access rules, impossible travel 2FA verification, and proxy filtering powered by IP2Location.io",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Mardhiah Air Network",
+            "email": "mardhiahnetwork@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "IP2Location\\Sentinel\\": "src/"
+        }
+    }
+}
