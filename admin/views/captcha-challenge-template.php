@@ -1,10 +1,17 @@
+<?php
+use IP2Location\Sentinel\Captcha;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="robots" content="noindex, nofollow, noarchive" />
-	<title><?php esc_html_e( 'Security Verification Required', 'locasentinel' ); ?></title>
+	<title><?php esc_html_e( 'Security Verification Required', 'ip2location-sentinel' ); ?></title>
 	<style type="text/css">
 		html {
 			background: #0f172a;
@@ -98,13 +105,13 @@
 				<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
 			</svg>
 		</div>
-		<h1><?php esc_html_e( 'Checking your browser before accessing', 'locasentinel' ); ?> <?php echo esc_html( get_bloginfo( 'name' ) ); ?></h1>
+		<h1><?php esc_html_e( 'Checking your browser before accessing', 'ip2location-sentinel' ); ?> <?php echo esc_html( get_bloginfo( 'name' ) ); ?></h1>
 	</div>
 
 	<div class="challenge-box">
 		<?php if ( isset( $_GET['captcha_err'] ) ) : ?>
 			<div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; text-align: center;">
-				<?php esc_html_e( 'Verification failed or expired. Please solve the challenge and click Verify.', 'locasentinel' ); ?>
+				<?php esc_html_e( 'Verification failed or expired. Please solve the challenge and click Verify.', 'ip2location-sentinel' ); ?>
 			</div>
 		<?php endif; ?>
 
@@ -113,16 +120,16 @@
 			<input type="hidden" name="redirect_to" value="<?php echo esc_attr( $request_uri ); ?>" />
 			<?php wp_nonce_field( 'ip2loc_captcha_verify_nonce', 'nonce' ); ?>
 
-			<?php echo \IP2Location\Sentinel\Captcha::render_widget(); ?>
+			<?php echo Captcha::render_widget(); ?>
 
 			<button type="submit" class="button-verify">
-				<?php esc_html_e( 'Verify', 'locasentinel' ); ?>
+				<?php esc_html_e( 'Verify', 'ip2location-sentinel' ); ?>
 			</button>
 		</form>
 	</div>
 
 	<div class="challenge-footer">
-		<?php esc_html_e( 'Protected by LocaSentinel Anti-Spam Shield', 'locasentinel' ); ?> &bull; <a href="https://www.ip2location.io" target="_blank" rel="noopener noreferrer">IP2Location.io</a>
+		<?php esc_html_e( 'Protected by IP2Location Sentinel Anti-Spam Shield', 'ip2location-sentinel' ); ?> &bull; <a href="https://www.ip2location.io" target="_blank" rel="noopener noreferrer">IP2Location.io</a>
 	</div>
 </body>
 </html>

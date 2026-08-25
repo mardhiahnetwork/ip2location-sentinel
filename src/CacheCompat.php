@@ -113,7 +113,7 @@ class CacheCompat {
 				'name'      => 'LiteSpeed Cache',
 				'active'    => self::is_plugin_active( 'litespeed-cache/litespeed-cache.php' ) || defined( 'LSCWP_V' ) || class_exists( 'LiteSpeed\Core' ),
 				'type'      => 'Plugin / Server',
-				'notes'     => __( 'X-LiteSpeed-Vary & no-cache headers natively supported.', 'locasentinel' ),
+				'notes'     => __( 'X-LiteSpeed-Vary & no-cache headers natively supported.', 'ip2location-sentinel' ),
 			),
 			'wp_rocket' => array(
 				'name'      => 'WP Rocket',

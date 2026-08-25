@@ -80,10 +80,12 @@ class Captcha {
 	public static function get_rate_limit_thresholds(): array {
 		$settings = get_option( 'ip2loc_settings', array() );
 
+		$clearance_min = isset( $settings['captcha_clearance_duration'] ) ? max( 5, (int) $settings['captcha_clearance_duration'] ) : 60;
+
 		return array(
 			'max_hits'          => isset( $settings['captcha_rate_limit_hits'] ) ? max( 3, (int) $settings['captcha_rate_limit_hits'] ) : 10,
 			'window_seconds'    => isset( $settings['captcha_rate_limit_window'] ) ? max( 5, (int) $settings['captcha_rate_limit_window'] ) : 60,
-			'clearance_seconds' => self::CLEARANCE_24_HOURS,
+			'clearance_seconds' => $clearance_min * MINUTE_IN_SECONDS,
 		);
 	}
 
@@ -108,7 +110,7 @@ class Captcha {
 			$wpdb->prepare(
 				"SELECT id FROM {$table} WHERE ip = %s AND status = 'locked' AND expires_at > %s LIMIT 1",
 				$ip,
-				current_time( 'mysql' )
+				gmdate( 'Y-m-d H:i:s' )
 			)
 		);
 
@@ -148,7 +150,7 @@ class Captcha {
 			}
 		}
 
-		// 3. Check database record for 24-hour solved status
+		// 3. Check database record for solved status
 		global $wpdb;
 		$table = self::get_table_name();
 
@@ -156,12 +158,13 @@ class Captcha {
 			$wpdb->prepare(
 				"SELECT id FROM {$table} WHERE ip = %s AND status = 'solved' AND expires_at > %s LIMIT 1",
 				$ip,
-				current_time( 'mysql' )
+				gmdate( 'Y-m-d H:i:s' )
 			)
 		);
 
 		if ( ! empty( $row ) ) {
-			RedisDriver::set( $cache_key, '1', self::CLEARANCE_24_HOURS );
+			$thresholds = self::get_rate_limit_thresholds();
+			RedisDriver::set( $cache_key, '1', $thresholds['clearance_seconds'] ?? 3600 );
 			return true;
 		}
 
@@ -180,7 +183,7 @@ class Captcha {
 	}
 
 	/**
-	 * Put an IP into a persistent LOCKED state in database and Redis for 24 hours.
+	 * Put an IP into a persistent LOCKED state in database and Redis for configured duration.
 	 *
 	 * @param string $ip
 	 * @param int    $duration_seconds Default: 86400 (24 hours).
@@ -188,7 +191,7 @@ class Captcha {
 	public static function lock_ip( string $ip, int $duration_seconds = 86400 ): void {
 		global $wpdb;
 		$table      = self::get_table_name();
-		$now        = current_time( 'mysql' );
+		$now        = gmdate( 'Y-m-d H:i:s' );
 		$expires_at = gmdate( 'Y-m-d H:i:s', time() + $duration_seconds );
 
 		// Clear any solved state
@@ -211,15 +214,15 @@ class Captcha {
 	}
 
 	/**
-	 * Unlock an IP and grant 24-hour persistent clearance upon successfully solving CAPTCHA.
+	 * Unlock an IP and grant persistent clearance upon successfully solving CAPTCHA.
 	 *
 	 * @param string $ip
-	 * @param int    $duration_seconds Default: 86400 (24 hours).
+	 * @param int    $duration_seconds Default: 3600.
 	 */
-	public static function unlock_and_solve_ip( string $ip, int $duration_seconds = 86400 ): void {
+	public static function unlock_and_solve_ip( string $ip, int $duration_seconds = 3600 ): void {
 		global $wpdb;
 		$table      = self::get_table_name();
-		$now        = current_time( 'mysql' );
+		$now        = gmdate( 'Y-m-d H:i:s' );
 		$expires_at = gmdate( 'Y-m-d H:i:s', time() + $duration_seconds );
 
 		// 1. Update Database
@@ -345,8 +348,8 @@ class Captcha {
 			include $template;
 		} else {
 			wp_die(
-				esc_html__( 'Security verification required. Please complete the challenge to proceed.', 'locasentinel' ),
-				esc_html__( '429 Security Challenge', 'locasentinel' ),
+				esc_html__( 'Security verification required. Please complete the challenge to proceed.', 'ip2location-sentinel' ),
+				esc_html__( '429 Security Challenge', 'ip2location-sentinel' ),
 				array( 'response' => 429 )
 			);
 		}
@@ -477,6 +480,6 @@ class Captcha {
 	 */
 	private static function generate_site_token( string $ip ): string {
 		$salt = wp_salt( 'auth' );
-		return hash_hmac( 'sha256', $ip . '|whole_site_shield|' . current_time( 'Y-m-d' ), $salt );
+		return hash_hmac( 'sha256', $ip . '|whole_site_shield|' . gmdate( 'Y-m-d' ), $salt );
 	}
 }

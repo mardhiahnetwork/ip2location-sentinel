@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       LocaSentinel – Geo-Security & Fraud Prevention for IP2Location
- * Plugin URI:        https://www.ip2location.io
+ * Plugin URI:        https://github.com/mardhiahnetwork/ip2location-sentinel
  * Description:       Geo-blocking firewall, impossible travel 2FA verification, comment spam filtering, and proxy detection powered by IP2Location.io.
  * Version:           1.0.0
  * Requires at least: 5.8
@@ -10,7 +10,7 @@
  * Author URI:        mailto:mardhiahnetwork@gmail.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       locasentinel
+ * Text Domain:       ip2location-sentinel
  * Domain Path:       /languages
  *
  * @package           LocaSentinel
@@ -112,3 +112,21 @@ function ip2loc_add_action_links( $links ) {
 	return array_merge( $plugin_links, $links );
 }
 add_filter( 'plugin_action_links_' . IP2LOC_PLUGIN_BASENAME, 'ip2loc_add_action_links' );
+
+/**
+ * Add Plugin Row Meta Links
+ *
+ * @param array  $links
+ * @param string $file
+ * @return array
+ */
+function ip2loc_add_plugin_row_meta( $links, $file ) {
+	if ( $file === IP2LOC_PLUGIN_BASENAME ) {
+		$row_meta = array(
+			'github' => '<a href="https://github.com/mardhiahnetwork/ip2location-sentinel" target="_blank" rel="noopener noreferrer">' . esc_html__( 'GitHub Repository', 'ip2location-sentinel' ) . '</a>',
+		);
+		return array_merge( $links, $row_meta );
+	}
+	return $links;
+}
+add_filter( 'plugin_row_meta', 'ip2loc_add_plugin_row_meta', 10, 2 );

@@ -105,7 +105,7 @@
 		}
 
 		function performAutoSave(callback) {
-			var $form = $('form[id^="ip2loc_"]');
+			var $form = $('form[id^="ip2loc_"], form.ip2loc-form');
 			if (!$form.length || !window.ip2locAdminData) {
 				if (callback) callback();
 				return;
@@ -146,8 +146,8 @@
 		}
 
 		// Trigger auto-save on input changes (debounced for text/inputs, immediate for toggles)
-		$(document).on('change', 'form[id^="ip2loc_"] input[type="checkbox"], form[id^="ip2loc_"] input[type="radio"], form[id^="ip2loc_"] select', function() {
-			var currentSnapshot = $('form[id^="ip2loc_"]').serialize();
+		$(document).on('change', 'form[id^="ip2loc_"] input[type="checkbox"], form.ip2loc-form input[type="checkbox"], form[id^="ip2loc_"] input[type="radio"], form.ip2loc-form input[type="radio"], form[id^="ip2loc_"] select, form.ip2loc-form select', function() {
+			var currentSnapshot = $('form[id^="ip2loc_"], form.ip2loc-form').serialize();
 			if (currentSnapshot !== lastSavedSnapshot) {
 				isFormDirty = true;
 				clearTimeout(autoSaveTimer);
@@ -157,8 +157,8 @@
 			}
 		});
 
-		$(document).on('input', 'form[id^="ip2loc_"] input[type="text"], form[id^="ip2loc_"] input[type="number"], form[id^="ip2loc_"] input[type="password"], form[id^="ip2loc_"] input[type="url"], form[id^="ip2loc_"] input[type="email"], form[id^="ip2loc_"] textarea', function() {
-			var currentSnapshot = $('form[id^="ip2loc_"]').serialize();
+		$(document).on('input', 'form[id^="ip2loc_"] input[type="text"], form.ip2loc-form input[type="text"], form[id^="ip2loc_"] input[type="number"], form.ip2loc-form input[type="number"], form[id^="ip2loc_"] input[type="password"], form.ip2loc-form input[type="password"], form[id^="ip2loc_"] input[type="url"], form.ip2loc-form input[type="url"], form[id^="ip2loc_"] input[type="email"], form.ip2loc-form input[type="email"], form[id^="ip2loc_"] textarea, form.ip2loc-form textarea', function() {
+			var currentSnapshot = $('form[id^="ip2loc_"], form.ip2loc-form').serialize();
 			if (currentSnapshot !== lastSavedSnapshot) {
 				isFormDirty = true;
 				updateAutoSaveBadge('saving', 'Unsaved changes...');
@@ -200,10 +200,18 @@
 			}
 		}
 
-		$(document).on('click', '.nav-tab-wrapper a.nav-tab', function(e) {
-			e.preventDefault();
+		$(document).on('click', '.nav-tab-wrapper.ip2loc-tabs a.nav-tab, .ip2loc-child-tabs a.nav-tab', function(e) {
 			var $clickedTab = $(this);
-			var tabTarget = $clickedTab.data('tab') || ($clickedTab.attr('href') ? $clickedTab.attr('href').replace(/^.*#/, '') : '');
+			var href = $clickedTab.attr('href') || '';
+			var dataTab = $clickedTab.data('tab');
+
+			// If it's a real page navigation link (e.g. admin.php?page=...), let normal browser navigation proceed
+			if (!dataTab && (!href || href.indexOf('#') === -1 || href.charAt(0) !== '#')) {
+				return;
+			}
+
+			e.preventDefault();
+			var tabTarget = dataTab || href.replace(/^.*#/, '');
 
 			// Auto-Save pending changes before switching
 			if (isFormDirty) {

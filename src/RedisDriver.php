@@ -85,7 +85,7 @@ class RedisDriver {
 			'available' => $available,
 			'host'      => $host,
 			'port'      => $port,
-			'label'     => $available ? sprintf( __( 'Auto-Connected (%s:%d)', 'locasentinel' ), $host, $port ) : __( 'Disabled / Not Available (Using WP Transients)', 'locasentinel' ),
+			'label'     => $available ? sprintf( __( 'Auto-Connected (%s:%d)', 'ip2location-sentinel' ), $host, $port ) : __( 'Disabled / Not Available (Using WP Transients)', 'ip2location-sentinel' ),
 		);
 	}
 
