@@ -56,6 +56,11 @@ class Logger {
 			return false;
 		}
 
+		$clean_ip = IpResolver::normalize_ip( $ip );
+		if ( empty( $clean_ip ) ) {
+			$clean_ip = IpResolver::normalize_ip( IpResolver::get_client_ip() );
+		}
+
 		$ua_info = UserAgent::parse();
 
 		$method      = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
@@ -71,13 +76,16 @@ class Logger {
 			}
 		}
 
+		// Redact sensitive credentials/tokens from query strings
+		$request_uri = self::sanitize_log_url( $request_uri );
+
 		// Skip CAPTCHA challenges, favicons, robots.txt, sitemaps, and common static assets
 		if ( self::is_ignorable_request( $request_uri, $endpoint, $action ) ) {
 			return false;
 		}
 
 		// Anti-Spam Log Debouncer & Hit Accumulator (aggregates repeated identical hits to same URL within 5 mins)
-		$fingerprint = md5( $ip . '|' . $method . '|' . $request_uri . '|' . $endpoint . '|' . $action . '|' . $rule_triggered );
+		$fingerprint = md5( $clean_ip . '|' . $method . '|' . $request_uri . '|' . $endpoint . '|' . $action . '|' . $rule_triggered );
 		$cache_key   = 'recent_log_' . $fingerprint;
 
 		$recent_id = RedisDriver::get( $cache_key );
@@ -97,7 +105,7 @@ class Logger {
 
 		$data = array(
 			'timestamp'       => current_time( 'mysql' ),
-			'ip'              => substr( sanitize_text_field( $ip ), 0, 45 ),
+			'ip'              => substr( $clean_ip, 0, 45 ),
 			'country_code'    => isset( $geo_data['country_code'] ) ? substr( sanitize_text_field( $geo_data['country_code'] ), 0, 2 ) : '',
 			'country_name'    => isset( $geo_data['country_name'] ) ? substr( sanitize_text_field( $geo_data['country_name'] ), 0, 100 ) : '',
 			'region_name'     => isset( $geo_data['region_name'] ) ? substr( sanitize_text_field( $geo_data['region_name'] ), 0, 100 ) : '',
@@ -341,30 +349,40 @@ class Logger {
 
 		if ( ! empty( $results ) ) {
 			foreach ( $results as $row ) {
-				fputcsv(
-					$output,
-					array(
-						$row['id'],
-						$row['timestamp'],
-						$row['ip'],
-						$row['country_code'],
-						$row['country_name'],
-						$row['region_name'],
-						$row['city_name'],
-						$row['zip_code'],
-						$row['asn'],
-						$row['as_name'],
-						$row['is_proxy'] ? 'YES' : 'NO',
-						$row['target_endpoint'],
-						$row['action_taken'],
-						$row['rule_triggered'],
-						$row['user_login'],
-						$row['device_type'],
-						$row['browser'],
-						$row['os'],
-						$row['user_agent'],
-					)
+				$line = array(
+					$row['id'],
+					$row['timestamp'],
+					$row['ip'],
+					$row['country_code'],
+					$row['country_name'],
+					$row['region_name'],
+					$row['city_name'],
+					$row['zip_code'],
+					$row['asn'],
+					$row['as_name'],
+					$row['is_proxy'] ? 'YES' : 'NO',
+					$row['target_endpoint'],
+					$row['action_taken'],
+					$row['rule_triggered'],
+					$row['user_login'],
+					$row['device_type'],
+					$row['browser'],
+					$row['os'],
+					$row['user_agent'],
 				);
+
+				// Prevent CSV Formula Injection
+				$sanitized_line = array_map(
+					function( $val ) {
+						if ( is_string( $val ) && preg_match( '/^[=\+\-@\t\r]/', $val ) ) {
+							return "'" . $val;
+						}
+						return $val;
+					},
+					$line
+				);
+
+				fputcsv( $output, $sanitized_line );
 			}
 		}
 
@@ -417,5 +435,62 @@ class Logger {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Redact sensitive credentials, passwords, and tokens from query strings for safe logging.
+	 *
+	 * @param string $url
+	 * @return string
+	 */
+	public static function sanitize_log_url( string $url ): string {
+		$url = trim( $url );
+		if ( empty( $url ) || strpos( $url, '?' ) === false ) {
+			return $url;
+		}
+
+		$parts = explode( '?', $url, 2 );
+		$path  = $parts[0];
+		$query = $parts[1];
+
+		parse_str( $query, $params );
+		if ( empty( $params ) || ! is_array( $params ) ) {
+			return $url;
+		}
+
+		$sensitive_keys = array(
+			'token',
+			'password',
+			'passwd',
+			'pwd',
+			'secret',
+			'key',
+			'api_key',
+			'apikey',
+			'nonce',
+			'auth',
+			'authorization',
+			'signature',
+			'sig',
+			'access_token',
+			'refresh_token',
+			'code',
+			'reset_key',
+			'user_pass',
+			'rp_key',
+		);
+
+		$sanitized_params = array();
+		foreach ( $params as $k => $v ) {
+			if ( in_array( strtolower( (string) $k ), $sensitive_keys, true ) ) {
+				$sanitized_params[ $k ] = '[REDACTED]';
+			} elseif ( is_array( $v ) ) {
+				$sanitized_params[ $k ] = $v;
+			} else {
+				$sanitized_params[ $k ] = (string) $v;
+			}
+		}
+
+		return $path . '?' . http_build_query( $sanitized_params );
 	}
 }

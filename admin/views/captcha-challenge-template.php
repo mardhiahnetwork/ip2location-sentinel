@@ -113,7 +113,7 @@
 			<input type="hidden" name="redirect_to" value="<?php echo esc_attr( $request_uri ); ?>" />
 			<?php wp_nonce_field( 'ip2loc_captcha_verify_nonce', 'nonce' ); ?>
 
-			<?php echo \IP2Location\Sentinel\Captcha::render_widget(); ?>
+			<?php echo \IP2Location\Sentinel\Captcha::render_widget( $active_provider ?? null, $client_ip ?? '' ); ?>
 
 			<button type="submit" class="button-verify">
 				<?php esc_html_e( 'Verify', 'locasentinel' ); ?>

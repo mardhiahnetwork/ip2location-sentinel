@@ -41,6 +41,14 @@ class Admin {
 		// CAPTCHA Verification Submission
 		add_action( 'admin_post_ip2loc_verify_captcha', array( __CLASS__, 'handle_verify_captcha' ) );
 		add_action( 'admin_post_nopriv_ip2loc_verify_captcha', array( __CLASS__, 'handle_verify_captcha' ) );
+
+		// CDN Asset Security Attributes (crossorigin & referrerpolicy)
+		add_filter( 'script_loader_tag', array( __CLASS__, 'filter_cdn_script_loader_tag' ), 10, 3 );
+		add_filter( 'style_loader_tag', array( __CLASS__, 'filter_cdn_style_loader_tag' ), 10, 4 );
+
+		// Standalone CAPTCHA Test Handlers (Opens in New Tab)
+		add_action( 'admin_post_ip2loc_test_captcha', array( __CLASS__, 'handle_test_captcha_page' ) );
+		add_action( 'admin_post_ip2loc_test_captcha_verify', array( __CLASS__, 'handle_test_captcha_verify' ) );
 	}
 
 	/**
@@ -416,9 +424,22 @@ class Admin {
 			$current['captcha_rate_limit_hits']                = isset( $input['captcha_rate_limit_hits'] ) ? max( 3, (int) $input['captcha_rate_limit_hits'] ) : 10;
 			$current['captcha_rate_limit_window']              = isset( $input['captcha_rate_limit_window'] ) ? max( 5, (int) $input['captcha_rate_limit_window'] ) : 60;
 			$current['captcha_clearance_duration']             = isset( $input['captcha_clearance_duration'] ) ? max( 5, (int) $input['captcha_clearance_duration'] ) : 60;
-			$current['captcha_provider']                       = isset( $input['captcha_provider'] ) && in_array( $input['captcha_provider'], array( 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ? $input['captcha_provider'] : 'turnstile';
-			$current['captcha_site_key']                       = isset( $input['captcha_site_key'] ) ? sanitize_text_field( trim( $input['captcha_site_key'] ) ) : '';
-			$current['captcha_secret_key']                     = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_secret_key'] ) ) : '';
+			$current['captcha_provider']                       = isset( $input['captcha_provider'] ) && in_array( $input['captcha_provider'], array( 'random', 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ? $input['captcha_provider'] : 'turnstile';
+			$current['captcha_turnstile_site_key']             = isset( $input['captcha_turnstile_site_key'] ) ? sanitize_text_field( trim( $input['captcha_turnstile_site_key'] ) ) : ( $current['captcha_turnstile_site_key'] ?? '' );
+			$current['captcha_turnstile_secret_key']           = isset( $input['captcha_turnstile_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_turnstile_secret_key'] ) ) : ( $current['captcha_turnstile_secret_key'] ?? '' );
+			$current['captcha_hcaptcha_site_key']              = isset( $input['captcha_hcaptcha_site_key'] ) ? sanitize_text_field( trim( $input['captcha_hcaptcha_site_key'] ) ) : ( $current['captcha_hcaptcha_site_key'] ?? '' );
+			$current['captcha_hcaptcha_secret_key']            = isset( $input['captcha_hcaptcha_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_hcaptcha_secret_key'] ) ) : ( $current['captcha_hcaptcha_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v2_site_key']          = isset( $input['captcha_recaptcha_v2_site_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v2_site_key'] ) ) : ( $current['captcha_recaptcha_v2_site_key'] ?? '' );
+			$current['captcha_recaptcha_v2_secret_key']        = isset( $input['captcha_recaptcha_v2_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v2_secret_key'] ) ) : ( $current['captcha_recaptcha_v2_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v3_site_key']          = isset( $input['captcha_recaptcha_v3_site_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v3_site_key'] ) ) : ( $current['captcha_recaptcha_v3_site_key'] ?? '' );
+			$current['captcha_recaptcha_v3_secret_key']        = isset( $input['captcha_recaptcha_v3_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v3_secret_key'] ) ) : ( $current['captcha_recaptcha_v3_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v3_score']             = isset( $input['captcha_recaptcha_v3_score'] ) ? max( 0.1, min( 1.0, (float) $input['captcha_recaptcha_v3_score'] ) ) : ( $current['captcha_recaptcha_v3_score'] ?? 0.5 );
+
+			// Sync active credentials to legacy keys for compatibility
+			$active_prov = $current['captcha_provider'] === 'random' ? 'turnstile' : $current['captcha_provider'];
+			$active_creds = Captcha::get_provider_credentials( $active_prov );
+			$current['captcha_site_key']   = $active_creds['site_key'];
+			$current['captcha_secret_key'] = $active_creds['secret_key'];
 		}
 
 		// 3. Impossible Travel Tab
@@ -600,6 +621,10 @@ class Admin {
 	public static function ajax_dismiss_notice(): void {
 		check_ajax_referer( 'ip2loc_admin_nonce', 'nonce' );
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ip2location-sentinel' ) ) );
+		}
+
 		update_user_meta( get_current_user_id(), 'ip2loc_dismissed_api_notice', 1 );
 		wp_send_json_success();
 	}
@@ -661,9 +686,22 @@ class Admin {
 			$current['captcha_rate_limit_hits']                = isset( $input['captcha_rate_limit_hits'] ) ? max( 3, (int) $input['captcha_rate_limit_hits'] ) : ( $current['captcha_rate_limit_hits'] ?? 10 );
 			$current['captcha_rate_limit_window']              = isset( $input['captcha_rate_limit_window'] ) ? max( 5, (int) $input['captcha_rate_limit_window'] ) : ( $current['captcha_rate_limit_window'] ?? 60 );
 			$current['captcha_clearance_duration']             = isset( $input['captcha_clearance_duration'] ) ? max( 5, (int) $input['captcha_clearance_duration'] ) : ( $current['captcha_clearance_duration'] ?? 60 );
-			$current['captcha_provider']                       = isset( $input['captcha_provider'] ) && in_array( $input['captcha_provider'], array( 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ? $input['captcha_provider'] : ( $current['captcha_provider'] ?? 'turnstile' );
-			$current['captcha_site_key']                       = isset( $input['captcha_site_key'] ) ? sanitize_text_field( trim( $input['captcha_site_key'] ) ) : ( $current['captcha_site_key'] ?? '' );
-			$current['captcha_secret_key']                     = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_secret_key'] ) ) : ( $current['captcha_secret_key'] ?? '' );
+			$current['captcha_provider']                       = isset( $input['captcha_provider'] ) && in_array( $input['captcha_provider'], array( 'random', 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ? $input['captcha_provider'] : ( $current['captcha_provider'] ?? 'turnstile' );
+			$current['captcha_turnstile_site_key']             = isset( $input['captcha_turnstile_site_key'] ) ? sanitize_text_field( trim( $input['captcha_turnstile_site_key'] ) ) : ( $current['captcha_turnstile_site_key'] ?? '' );
+			$current['captcha_turnstile_secret_key']           = isset( $input['captcha_turnstile_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_turnstile_secret_key'] ) ) : ( $current['captcha_turnstile_secret_key'] ?? '' );
+			$current['captcha_hcaptcha_site_key']              = isset( $input['captcha_hcaptcha_site_key'] ) ? sanitize_text_field( trim( $input['captcha_hcaptcha_site_key'] ) ) : ( $current['captcha_hcaptcha_site_key'] ?? '' );
+			$current['captcha_hcaptcha_secret_key']            = isset( $input['captcha_hcaptcha_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_hcaptcha_secret_key'] ) ) : ( $current['captcha_hcaptcha_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v2_site_key']          = isset( $input['captcha_recaptcha_v2_site_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v2_site_key'] ) ) : ( $current['captcha_recaptcha_v2_site_key'] ?? '' );
+			$current['captcha_recaptcha_v2_secret_key']        = isset( $input['captcha_recaptcha_v2_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v2_secret_key'] ) ) : ( $current['captcha_recaptcha_v2_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v3_site_key']          = isset( $input['captcha_recaptcha_v3_site_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v3_site_key'] ) ) : ( $current['captcha_recaptcha_v3_site_key'] ?? '' );
+			$current['captcha_recaptcha_v3_secret_key']        = isset( $input['captcha_recaptcha_v3_secret_key'] ) ? sanitize_text_field( trim( $input['captcha_recaptcha_v3_secret_key'] ) ) : ( $current['captcha_recaptcha_v3_secret_key'] ?? '' );
+			$current['captcha_recaptcha_v3_score']             = isset( $input['captcha_recaptcha_v3_score'] ) ? max( 0.1, min( 1.0, (float) $input['captcha_recaptcha_v3_score'] ) ) : ( $current['captcha_recaptcha_v3_score'] ?? 0.5 );
+
+			// Sync active credentials to legacy keys for compatibility
+			$active_prov = $current['captcha_provider'] === 'random' ? 'turnstile' : $current['captcha_provider'];
+			$active_creds = Captcha::get_provider_credentials( $active_prov );
+			$current['captcha_site_key']   = $active_creds['site_key'];
+			$current['captcha_secret_key'] = $active_creds['secret_key'];
 		}
 
 		// 3. Impossible Travel Tab
@@ -941,5 +979,321 @@ class Admin {
 		// On verification failure, redirect cleanly back to the target URL with inline error
 		wp_safe_redirect( add_query_arg( 'captcha_err', '1', $redirect_to ) );
 		exit;
+	}
+
+	/**
+	 * Add security attributes to external CDN scripts.
+	 *
+	 * @param string $tag
+	 * @param string $handle
+	 * @param string $src
+	 * @return string
+	 */
+	public static function filter_cdn_script_loader_tag( string $tag, string $handle, string $src ): string {
+		if ( in_array( $handle, array( 'select2', 'chartjs' ), true ) && strpos( $tag, 'crossorigin' ) === false ) {
+			return str_replace( ' src=', ' crossorigin="anonymous" referrerpolicy="no-referrer" src=', $tag );
+		}
+		return $tag;
+	}
+
+	/**
+	 * Add security attributes to external CDN stylesheets.
+	 *
+	 * @param string $tag
+	 * @param string $handle
+	 * @param string $href
+	 * @param string $media
+	 * @return string
+	 */
+	public static function filter_cdn_style_loader_tag( string $tag, string $handle, string $href, string $media ): string {
+		if ( $handle === 'select2' && strpos( $tag, 'crossorigin' ) === false ) {
+			return str_replace( ' rel=', ' crossorigin="anonymous" referrerpolicy="no-referrer" rel=', $tag );
+		}
+		return $tag;
+	}
+
+	/**
+	 * Render Standalone CAPTCHA Live Test Page (Opens in a New Tab outside Admin Chrome).
+	 */
+	public static function handle_test_captcha_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized access.', 'locasentinel' ), 403 );
+		}
+
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'ip2loc_test_captcha_nonce' ) ) {
+			wp_die( esc_html__( 'Security check failed. Please refresh the settings page and try again.', 'locasentinel' ), 403 );
+		}
+
+		$provider = isset( $_GET['provider'] ) ? sanitize_text_field( wp_unslash( $_GET['provider'] ) ) : 'turnstile';
+		if ( ! in_array( $provider, array( 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ) {
+			$provider = 'turnstile';
+		}
+
+		$provider_labels = array(
+			'turnstile'    => 'Cloudflare Turnstile',
+			'hcaptcha'     => 'hCaptcha',
+			'recaptcha_v2' => 'Google reCAPTCHA v2',
+			'recaptcha_v3' => 'Google reCAPTCHA v3',
+		);
+
+		$creds = Captcha::get_provider_credentials( $provider );
+		$is_configured = ! empty( $creds['site_key'] ) && ! empty( $creds['secret_key'] );
+
+		CacheCompat::disable_caching();
+		self::render_standalone_captcha_test_view( $provider, $provider_labels[ $provider ], $creds, $is_configured );
+		exit;
+	}
+
+	/**
+	 * Handle Standalone CAPTCHA Test Form Submission Verification.
+	 */
+	public static function handle_test_captcha_verify(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized access.', 'locasentinel' ), 403 );
+		}
+
+		$nonce = isset( $_POST['ip2loc_test_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['ip2loc_test_nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'ip2loc_test_captcha_verify_nonce' ) ) {
+			wp_die( esc_html__( 'Security check failed. Please try again.', 'locasentinel' ), 403 );
+		}
+
+		$provider = isset( $_POST['ip2loc_captcha_provider'] ) ? sanitize_text_field( wp_unslash( $_POST['ip2loc_captcha_provider'] ) ) : 'turnstile';
+		if ( ! in_array( $provider, array( 'turnstile', 'hcaptcha', 'recaptcha_v2', 'recaptcha_v3' ), true ) ) {
+			$provider = 'turnstile';
+		}
+
+		$provider_labels = array(
+			'turnstile'    => 'Cloudflare Turnstile',
+			'hcaptcha'     => 'hCaptcha',
+			'recaptcha_v2' => 'Google reCAPTCHA v2',
+			'recaptcha_v3' => 'Google reCAPTCHA v3',
+		);
+
+		$creds = Captcha::get_provider_credentials( $provider );
+		$extra_data = array();
+		$start_time = microtime( true );
+		$verified   = Captcha::verify_submission( null, $provider, $extra_data );
+		$duration   = round( ( microtime( true ) - $start_time ) * 1000, 1 );
+
+		CacheCompat::disable_caching();
+		self::render_standalone_captcha_test_view( $provider, $provider_labels[ $provider ], $creds, true, true, $verified, $duration, $extra_data );
+		exit;
+	}
+
+	/**
+	 * Render HTML layout for Standalone CAPTCHA Test View.
+	 *
+	 * @param string $provider
+	 * @param string $provider_name
+	 * @param array  $creds
+	 * @param bool   $is_configured
+	 * @param bool   $is_submitted
+	 * @param bool   $verified
+	 * @param float  $duration_ms
+	 * @param array  $extra_data
+	 */
+	private static function render_standalone_captcha_test_view(
+		string $provider,
+		string $provider_name,
+		array $creds,
+		bool $is_configured,
+		bool $is_submitted = false,
+		bool $verified = false,
+		float $duration_ms = 0.0,
+		array $extra_data = array()
+	): void {
+		$site_key = $creds['site_key'] ?? '';
+		$masked_key = ! empty( $site_key ) ? substr( $site_key, 0, 6 ) . '...' . substr( $site_key, -4 ) : '';
+		$test_url = admin_url( 'admin-post.php?action=ip2loc_test_captcha&provider=' . $provider . '&_wpnonce=' . wp_create_nonce( 'ip2loc_test_captcha_nonce' ) );
+		?>
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="utf-8" />
+			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			<meta name="robots" content="noindex, nofollow, noarchive" />
+			<title><?php echo esc_html( sprintf( __( 'CAPTCHA Test: %s', 'locasentinel' ), $provider_name ) ); ?></title>
+			<style>
+				* { box-sizing: border-box; }
+				body {
+					background: #0f172a;
+					color: #cbd5e1;
+					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+					margin: 0;
+					padding: 40px 16px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					min-height: 100vh;
+				}
+				.test-card {
+					background: #1e293b;
+					border: 1px solid #334155;
+					border-radius: 10px;
+					max-width: 540px;
+					width: 100%;
+					padding: 30px;
+					box-shadow: 0 15px 35px -5px rgba(0,0,0,0.5);
+				}
+				.test-header {
+					text-align: center;
+					padding-bottom: 18px;
+					border-bottom: 1px solid #334155;
+					margin-bottom: 22px;
+				}
+				.test-header h1 {
+					color: #f8fafc;
+					font-size: 20px;
+					margin: 0 0 6px;
+				}
+				.provider-badge {
+					display: inline-block;
+					background: rgba(14, 165, 233, 0.15);
+					color: #38bdf8;
+					border: 1px solid rgba(14, 165, 233, 0.35);
+					padding: 3px 10px;
+					border-radius: 20px;
+					font-size: 12px;
+					font-weight: 600;
+				}
+				.status-banner {
+					padding: 14px 18px;
+					border-radius: 8px;
+					font-size: 14px;
+					margin-bottom: 20px;
+					line-height: 1.45;
+				}
+				.status-success {
+					background: rgba(34, 197, 94, 0.15);
+					border: 1px solid rgba(34, 197, 94, 0.4);
+					color: #86efac;
+				}
+				.status-error {
+					background: rgba(239, 68, 68, 0.15);
+					border: 1px solid rgba(239, 68, 68, 0.4);
+					color: #fca5a5;
+				}
+				.status-warn {
+					background: rgba(245, 158, 11, 0.15);
+					border: 1px solid rgba(245, 158, 11, 0.4);
+					color: #fcd34d;
+				}
+				.widget-container {
+					background: #0f172a;
+					border: 1px solid #334155;
+					border-radius: 6px;
+					padding: 20px;
+					margin-bottom: 18px;
+					text-align: center;
+				}
+				.btn-primary {
+					background: #0284c7;
+					border: 1px solid #0369a1;
+					color: #fff;
+					font-size: 14px;
+					font-weight: 600;
+					padding: 10px 20px;
+					border-radius: 4px;
+					cursor: pointer;
+					width: 100%;
+					transition: background 0.15s ease;
+				}
+				.btn-primary:hover {
+					background: #0369a1;
+				}
+				.btn-secondary {
+					background: #334155;
+					border: 1px solid #475569;
+					color: #f8fafc;
+					font-size: 13px;
+					padding: 8px 16px;
+					border-radius: 4px;
+					cursor: pointer;
+					text-decoration: none;
+					display: inline-block;
+				}
+				.btn-secondary:hover {
+					background: #475569;
+				}
+				.actions-row {
+					margin-top: 16px;
+					display: flex;
+					gap: 10px;
+					justify-content: space-between;
+				}
+				.meta-info {
+					margin-top: 14px;
+					font-size: 12px;
+					color: #94a3b8;
+					text-align: center;
+				}
+			</style>
+		</head>
+		<body>
+			<div class="test-card">
+				<div class="test-header">
+					<div class="provider-badge"><?php echo esc_html( $provider_name ); ?></div>
+					<h1 style="margin-top: 8px;"><?php esc_html_e( 'CAPTCHA Test', 'locasentinel' ); ?></h1>
+				</div>
+
+				<?php if ( ! $is_configured ) : ?>
+					<div class="status-banner status-warn">
+						<strong><?php esc_html_e( 'Not Configured', 'locasentinel' ); ?>:</strong>
+						<?php echo esc_html( sprintf( __( 'Save both Site Key and Secret Key for %s before testing.', 'locasentinel' ), $provider_name ) ); ?>
+					</div>
+					<div style="text-align: center; margin-top: 18px;">
+						<button type="button" onclick="window.close();" class="btn-secondary"><?php esc_html_e( 'Close', 'locasentinel' ); ?></button>
+					</div>
+				<?php else : ?>
+
+					<?php if ( $is_submitted ) : ?>
+						<?php if ( $verified ) : ?>
+							<div class="status-banner status-success">
+								<strong><?php esc_html_e( 'Verification successful', 'locasentinel' ); ?>.</strong><br />
+								<?php echo esc_html( sprintf( __( 'Response verified with %s in %s ms.', 'locasentinel' ), $provider_name, $duration_ms ) ); ?>
+								<?php if ( isset( $extra_data['score'] ) ) : ?>
+									<br /><small><?php echo sprintf( esc_html__( 'Bot Score: %0.2f', 'locasentinel' ), $extra_data['score'] ); ?></small>
+								<?php endif; ?>
+							</div>
+						<?php else : ?>
+							<div class="status-banner status-error">
+								<strong><?php esc_html_e( 'Verification failed', 'locasentinel' ); ?>:</strong><br />
+								<?php echo esc_html( is_array( $extra_data['error'] ?? '' ) ? wp_json_encode( $extra_data['error'] ) : ( $extra_data['error'] ?? __( 'Token rejected by provider.', 'locasentinel' ) ) ); ?>
+							</div>
+						<?php endif; ?>
+					<?php endif; ?>
+
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="ip2loc_test_captcha_verify" />
+						<input type="hidden" name="ip2loc_captcha_provider" value="<?php echo esc_attr( $provider ); ?>" />
+						<?php wp_nonce_field( 'ip2loc_test_captcha_verify_nonce', 'ip2loc_test_nonce' ); ?>
+
+						<div class="widget-container">
+							<p style="margin-top: 0; font-size: 13px; color: #94a3b8;">
+								<?php esc_html_e( 'Complete the challenge below and click Verify:', 'locasentinel' ); ?>
+							</p>
+							<?php echo Captcha::render_widget( $provider ); ?>
+						</div>
+
+						<button type="submit" class="btn-primary">
+							<?php esc_html_e( 'Verify', 'locasentinel' ); ?>
+						</button>
+					</form>
+
+					<div class="actions-row">
+						<a href="<?php echo esc_url( $test_url ); ?>" class="btn-secondary"><?php esc_html_e( 'Test Again', 'locasentinel' ); ?></a>
+						<button type="button" onclick="window.close();" class="btn-secondary"><?php esc_html_e( 'Close', 'locasentinel' ); ?></button>
+					</div>
+
+					<div class="meta-info">
+						<span><?php esc_html_e( 'Site Key:', 'locasentinel' ); ?> <code><?php echo esc_html( $masked_key ); ?></code></span>
+					</div>
+
+				<?php endif; ?>
+			</div>
+		</body>
+		</html>
+		<?php
 	}
 }

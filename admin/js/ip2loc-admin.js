@@ -58,66 +58,77 @@
 			}
 		});
 
-		// 3. WordPress Native Tab Navigation with Real-Time & Tab Auto-Save
-		var $activeForm = $('form[id^="ip2loc_"]');
-		var lastSavedSnapshot = $activeForm.length ? $activeForm.serialize() : '';
-		var isFormDirty = false;
-		var autoSaveTimer = null;
-		var badgeFadeTimer = null;
+		// 3. Dynamic Save Button Controller (Right-Top to Left-Bottom on Scroll) & Pure Manual Save
+		var $saveBtn = $('#ip2loc_save_btn');
+		var $headerWrap = $('.ip2loc-header-wrap');
 
-		function updateAutoSaveBadge(state, message) {
-			var $badge = $('#ip2loc_autosave_badge');
-			if (!$badge.length) return;
+		function updateSaveButtonPosition() {
+			if (!$saveBtn.length || !$headerWrap.length) return;
+			var headerRect = $headerWrap[0].getBoundingClientRect();
 
-			clearTimeout(badgeFadeTimer);
-
-			var $icon = $badge.find('.dashicons');
-			var $text = $badge.find('.ip2loc-badge-text');
-
-			if (state === 'saving') {
-				$badge.removeClass('is-error').addClass('is-saving');
-				$icon.removeClass('dashicons-saved dashicons-warning').addClass('dashicons-update');
-				$text.text(message || 'Saving changes...');
-				$badge.stop(true, true).css('display', 'inline-flex').hide().fadeIn(150);
-			} else if (state === 'saved') {
-				$badge.removeClass('is-saving is-error');
-				$icon.removeClass('dashicons-update dashicons-warning').addClass('dashicons-saved');
-				$text.text(message || 'All changes saved');
-				$badge.stop(true, true).css('display', 'inline-flex');
-
-				// Auto-disappear after 2.5 seconds
-				badgeFadeTimer = setTimeout(function() {
-					$badge.fadeOut(400);
-				}, 2500);
-			} else if (state === 'error') {
-				$badge.removeClass('is-saving').addClass('is-error');
-				$icon.removeClass('dashicons-update dashicons-saved').addClass('dashicons-warning');
-				$text.text(message || 'Error saving changes');
-				$badge.stop(true, true).css('display', 'inline-flex');
-
-				// Auto-disappear after 4 seconds
-				badgeFadeTimer = setTimeout(function() {
-					$badge.fadeOut(400);
-				}, 4000);
-			} else if (state === 'hide') {
-				$badge.stop(true, true).fadeOut(200);
+			// If header is scrolled out of viewport, move save button to Left Bottom
+			if (headerRect.bottom < 40) {
+				if (!$saveBtn.hasClass('is-floating')) {
+					$saveBtn.addClass('is-floating');
+				}
+			} else {
+				if ($saveBtn.hasClass('is-floating')) {
+					$saveBtn.removeClass('is-floating');
+				}
 			}
 		}
 
-		function performAutoSave(callback) {
+		// Scroll & Resize listeners with requestAnimationFrame throttling
+		var isTicking = false;
+		$(window).on('scroll resize', function() {
+			if (!isTicking) {
+				window.requestAnimationFrame(function() {
+					updateSaveButtonPosition();
+					isTicking = false;
+				});
+				isTicking = true;
+			}
+		});
+		updateSaveButtonPosition();
+
+		// Show dynamic toast notification
+		function showSaveToast(type, message) {
+			$('.ip2loc-save-toast').remove();
+			var icon = type === 'success' ? 'dashicons-saved' : 'dashicons-warning';
+			var $toast = $(
+				'<div class="ip2loc-save-toast toast-' + type + '">' +
+				'<span class="dashicons ' + icon + '"></span>' +
+				'<span>' + message + '</span>' +
+				'</div>'
+			);
+			$('body').append($toast);
+			setTimeout(function() {
+				$toast.fadeOut(300, function() {
+					$(this).remove();
+				});
+			}, 3000);
+		}
+
+		// Manual Save Button Click Handler (NO auto-changes)
+		$(document).on('click', '#ip2loc_save_btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
 			var $form = $('form[id^="ip2loc_"]');
+
 			if (!$form.length || !window.ip2locAdminData) {
-				if (callback) callback();
 				return;
 			}
 
-			var currentSnapshot = $form.serialize();
-			if (!isFormDirty && currentSnapshot === lastSavedSnapshot) {
-				if (callback) callback();
+			if ($btn.hasClass('is-saving')) {
 				return;
 			}
 
-			updateAutoSaveBadge('saving', 'Saving changes...');
+			var origText = $btn.find('.ip2loc-save-text').text();
+			var origIcon = $btn.find('.dashicons').attr('class');
+
+			$btn.addClass('is-saving');
+			$btn.find('.dashicons').removeClass('dashicons-saved').addClass('dashicons-update');
+			$btn.find('.ip2loc-save-text').text(ip2locAdminData.sending_text || 'Saving...');
 
 			var formData = $form.serializeArray();
 			formData.push({ name: 'action', value: 'ip2loc_auto_save_settings' });
@@ -129,47 +140,36 @@
 				data: $.param(formData),
 				dataType: 'json',
 				success: function(res) {
+					$btn.removeClass('is-saving');
+					$btn.find('.dashicons').removeClass('dashicons-update').addClass('dashicons-saved');
+					$btn.find('.ip2loc-save-text').text(origText);
+
 					if (res && res.success) {
-						lastSavedSnapshot = currentSnapshot;
-						isFormDirty = false;
-						updateAutoSaveBadge('saved', 'All changes saved');
+						showSaveToast('success', res.data && res.data.message ? res.data.message : 'Settings saved successfully!');
 					} else {
-						updateAutoSaveBadge('error', res && res.data && res.data.message ? res.data.message : 'Error saving');
+						showSaveToast('error', res && res.data && res.data.message ? res.data.message : 'Error saving settings.');
 					}
-					if (callback) callback(res);
 				},
 				error: function() {
-					updateAutoSaveBadge('error', 'Network error');
-					if (callback) callback();
+					$btn.removeClass('is-saving');
+					$btn.find('.dashicons').removeClass('dashicons-update').addClass('dashicons-saved');
+					$btn.find('.ip2loc-save-text').text(origText);
+					showSaveToast('error', 'Network error while saving settings.');
 				}
 			});
-		}
+		});
 
-		// Trigger auto-save on input changes (debounced for text/inputs, immediate for toggles)
-		$(document).on('change', 'form[id^="ip2loc_"] input[type="checkbox"], form[id^="ip2loc_"] input[type="radio"], form[id^="ip2loc_"] select', function() {
-			var currentSnapshot = $('form[id^="ip2loc_"]').serialize();
-			if (currentSnapshot !== lastSavedSnapshot) {
-				isFormDirty = true;
-				clearTimeout(autoSaveTimer);
-				autoSaveTimer = setTimeout(function() {
-					performAutoSave();
-				}, 300);
+		// Keyboard shortcut Ctrl+S / Cmd+S to trigger Save button
+		$(document).on('keydown', function(e) {
+			if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+				if ($('#ip2loc_save_btn').length) {
+					e.preventDefault();
+					$('#ip2loc_save_btn').trigger('click');
+				}
 			}
 		});
 
-		$(document).on('input', 'form[id^="ip2loc_"] input[type="text"], form[id^="ip2loc_"] input[type="number"], form[id^="ip2loc_"] input[type="password"], form[id^="ip2loc_"] input[type="url"], form[id^="ip2loc_"] input[type="email"], form[id^="ip2loc_"] textarea', function() {
-			var currentSnapshot = $('form[id^="ip2loc_"]').serialize();
-			if (currentSnapshot !== lastSavedSnapshot) {
-				isFormDirty = true;
-				updateAutoSaveBadge('saving', 'Unsaved changes...');
-				clearTimeout(autoSaveTimer);
-				autoSaveTimer = setTimeout(function() {
-					performAutoSave();
-				}, 1200);
-			}
-		});
-
-		// Tab Switching Controller
+		// Tab Switching Controller (pure client-side switching, NO auto-saving)
 		function switchTab(targetId, $tabLink) {
 			if (!targetId) return;
 			var cleanId = targetId.replace(/^#/, '');
@@ -193,6 +193,7 @@
 					$('#ip2loc_countries_select').trigger('change.select2');
 				}
 				$(window).trigger('resize');
+				updateSaveButtonPosition();
 
 				if (window.history && window.history.replaceState) {
 					window.history.replaceState(null, null, '#' + cleanId);
@@ -204,15 +205,7 @@
 			e.preventDefault();
 			var $clickedTab = $(this);
 			var tabTarget = $clickedTab.data('tab') || ($clickedTab.attr('href') ? $clickedTab.attr('href').replace(/^.*#/, '') : '');
-
-			// Auto-Save pending changes before switching
-			if (isFormDirty) {
-				performAutoSave(function() {
-					switchTab(tabTarget, $clickedTab);
-				});
-			} else {
-				switchTab(tabTarget, $clickedTab);
-			}
+			switchTab(tabTarget, $clickedTab);
 		});
 
 		// Auto-open tab based on URL hash on page load
@@ -228,6 +221,21 @@
 			} else {
 				$('#ip2loc_row_redirect_url').slideUp(200);
 			}
+		});
+
+		// 4. Child Sub-Tab Navigation Controller
+		$(document).on('click', '.ip2loc-subtab-link', function(e) {
+			e.preventDefault();
+			var $link = $(this);
+			var targetId = $link.data('subtab') || ($link.attr('href') ? $link.attr('href').replace(/^.*#/, '') : '');
+			if (!targetId) return;
+
+			var $container = $link.closest('.ip2loc-subtab-container');
+			$container.find('.ip2loc-subtab-link').removeClass('is-active');
+			$link.addClass('is-active');
+
+			$container.find('.ip2loc-subtab-pane').removeClass('is-active').hide();
+			$('#' + targetId).addClass('is-active').fadeIn(120);
 		});
 
 		// 4. API Key Show/Hide Password Toggle
@@ -248,23 +256,24 @@
 			});
 		}
 
-		// Toggle CAPTCHA Secret Key Visibility
-		var $captchaSecretInput = $('#ip2loc_captcha_secret_key');
-		var $toggleCaptchaBtn   = $('#ip2loc_toggle_captcha_secret');
-		var $toggleCaptchaLabel = $('#ip2loc_toggle_captcha_secret_label');
+		// Generic Toggle Secret Key Visibility Button (data-target)
+		$(document).on('click', '.ip2loc-toggle-secret-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var targetId = $btn.data('target');
+			var $input = $('#' + targetId);
+			var $label = $btn.find('span');
 
-		if ($captchaSecretInput.length && $toggleCaptchaBtn.length) {
-			$toggleCaptchaBtn.on('click', function(e) {
-				e.preventDefault();
-				if ($captchaSecretInput.attr('type') === 'password') {
-					$captchaSecretInput.attr('type', 'text');
-					$toggleCaptchaLabel.text('Hide');
+			if ($input.length) {
+				if ($input.attr('type') === 'password') {
+					$input.attr('type', 'text');
+					$label.text('Hide');
 				} else {
-					$captchaSecretInput.attr('type', 'password');
-					$toggleCaptchaLabel.text('Show');
+					$input.attr('type', 'password');
+					$label.text('Show');
 				}
-			});
-		}
+			}
+		});
 
 		// 5. Test API Key AJAX
 		$('#ip2loc_btn_test_key').on('click', function(e) {

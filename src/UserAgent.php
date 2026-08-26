@@ -68,7 +68,8 @@ class UserAgent {
 			$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 		}
 
-		$ua = trim( $ua );
+		// Bound UA length to prevent ReDoS / CPU spikes
+		$ua = substr( trim( $ua ), 0, 1024 );
 
 		if ( empty( $ua ) ) {
 			return array(

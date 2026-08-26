@@ -23,10 +23,14 @@ $webhook_custom_payload = $settings['webhook_custom_payload'] ?? '';
 
 <div class="wrap ip2loc-wrap">
 	<div class="ip2loc-header-wrap">
-		<h1><?php esc_html_e( 'Impossible Travel & 2FA', 'locasentinel' ); ?></h1>
-		<div class="ip2loc-autosave-badge" id="ip2loc_autosave_badge" style="display:none;">
-			<span class="dashicons dashicons-saved"></span>
-			<span class="ip2loc-badge-text"><?php esc_html_e( 'All changes saved', 'locasentinel' ); ?></span>
+		<div class="ip2loc-header-left">
+			<h1><?php esc_html_e( 'Impossible Travel & 2FA', 'locasentinel' ); ?></h1>
+		</div>
+		<div class="ip2loc-header-right">
+			<button type="submit" form="ip2loc_impossible_form" class="button button-primary ip2loc-save-btn" id="ip2loc_save_btn">
+				<span class="dashicons dashicons-saved"></span>
+				<span class="ip2loc-save-text"><?php esc_html_e( 'Save Changes', 'locasentinel' ); ?></span>
+			</button>
 		</div>
 	</div>
 	<hr class="wp-header-end">
@@ -39,10 +43,10 @@ $webhook_custom_payload = $settings['webhook_custom_payload'] ?? '';
 		<a href="#tab-webhooks" class="nav-tab"><?php esc_html_e( 'Security Webhooks', 'locasentinel' ); ?></a>
 	</nav>
 
-	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ip2loc-form ip2loc-tabbed-form">
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="ip2loc_impossible_form" class="ip2loc-form ip2loc-tabbed-form">
 		<input type="hidden" name="action" value="ip2loc_save_settings" />
 		<input type="hidden" name="ip2loc_tab" value="impossible_travel" />
-		<?php wp_nonce_field( 'ip2loc_settings_nonce', 'nonce' ); ?>
+		<?php wp_nonce_field( 'ip2loc_save_settings_action', 'ip2loc_nonce' ); ?>
 
 		<!-- TAB 1: Impossible Travel Engine -->
 		<div id="tab-impossible-travel" class="ip2loc-tab-pane ip2loc-tab-active">

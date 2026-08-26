@@ -124,13 +124,13 @@ class ImpossibleTravel {
 		$prev_time    = (int) get_user_meta( $user->ID, '_ip2loc_last_login_time', true );
 		$prev_lat     = (float) get_user_meta( $user->ID, '_ip2loc_last_login_lat', true );
 		$prev_lon     = (float) get_user_meta( $user->ID, '_ip2loc_last_login_lon', true );
-		$prev_ip      = get_user_meta( $user->ID, '_ip2loc_last_login_ip', true );
+		$prev_ip      = IpResolver::normalize_ip( (string) get_user_meta( $user->ID, '_ip2loc_last_login_ip', true ) );
 		$prev_city    = get_user_meta( $user->ID, '_ip2loc_last_login_city', true );
 		$prev_cc      = get_user_meta( $user->ID, '_ip2loc_last_login_country', true );
 		$prev_as      = get_user_meta( $user->ID, '_ip2loc_last_login_as', true );
 		$prev_ua_hash = get_user_meta( $user->ID, '_ip2loc_last_ua_hash', true );
 
-		$curr_ip  = IpResolver::get_client_ip();
+		$curr_ip  = IpResolver::normalize_ip( IpResolver::get_client_ip() );
 		$curr_geo = ApiClient::lookup( $curr_ip );
 
 		if ( is_wp_error( $curr_geo ) ) {
@@ -146,7 +146,7 @@ class ImpossibleTravel {
 		$curr_lon  = (float) $curr_geo['longitude'];
 
 		// Same IP address -> legitimate direct match
-		if ( $prev_ip === $curr_ip ) {
+		if ( ! empty( $prev_ip ) && $prev_ip === $curr_ip ) {
 			return $user;
 		}
 
@@ -238,13 +238,14 @@ class ImpossibleTravel {
 		$otp_code   = sprintf( '%06d', wp_rand( 100000, 999999 ) );
 		$otp_token  = wp_generate_password( 32, false );
 		$otp_secret = wp_hash_password( $otp_code );
+		$origin_ip  = IpResolver::normalize_ip( $details['ip'] ?? IpResolver::get_client_ip() );
 
 		set_transient(
 			'ip2loc_otp_' . $otp_token,
 			array(
 				'user_id'    => $user->ID,
 				'secret'     => $otp_secret,
-				'ip'         => $details['ip'],
+				'ip'         => $origin_ip,
 				'geo'        => $geo,
 				'attempts'   => 0,
 				'created_at' => time(),
@@ -271,7 +272,7 @@ class ImpossibleTravel {
 			$otp_code,
 			$details['location_current'],
 			$details['location_previous'],
-			$details['ip'],
+			$origin_ip,
 			$site_name
 		);
 
@@ -308,6 +309,13 @@ class ImpossibleTravel {
 			echo '<p><a href="' . esc_url( wp_login_url() ) . '">' . esc_html__( 'Return to Login', 'ip2location-sentinel' ) . '</a></p>';
 			login_footer();
 			exit;
+		}
+
+		$current_ip = IpResolver::normalize_ip( IpResolver::get_client_ip() );
+		$origin_ip  = IpResolver::normalize_ip( $data['ip'] ?? '' );
+
+		if ( ! empty( $origin_ip ) && $current_ip !== $origin_ip ) {
+			wp_die( esc_html__( 'Session IP mismatch. Verification must be completed from the initiating device.', 'ip2location-sentinel' ), 403 );
 		}
 
 		if ( isset( $_POST['ip2loc_otp_verify'] ) && check_admin_referer( 'ip2loc_otp_verify_action', 'ip2loc_otp_nonce' ) ) {
@@ -385,7 +393,7 @@ class ImpossibleTravel {
 			return;
 		}
 
-		$ip  = IpResolver::get_client_ip();
+		$ip  = IpResolver::normalize_ip( IpResolver::get_client_ip() );
 		$geo = ApiClient::lookup( $ip );
 
 		if ( ! is_wp_error( $geo ) ) {

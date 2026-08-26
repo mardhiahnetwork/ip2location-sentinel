@@ -1,6 +1,11 @@
 <?php
 /**
- * Security Webhook Dispatcher with Full {{variable}} Template Placeholder Support
+ * Security Webhook Dispatcher with SSRF Hardening & {{variable}} Template Support
+ *
+ * Dispatches real-time security alerts to external platforms (Discord, Slack,
+ * Telegram, Custom REST Webhooks) while enforcing strict SSRF (Server-Side
+ * Request Forgery) protection against private subnets, localhost, and cloud
+ * metadata services.
  *
  * @package IP2Location\Sentinel
  * @author  Mardhiah Air Network <mardhiahnetwork@gmail.com>
@@ -13,6 +18,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Webhook {
+
+	/**
+	 * Forbidden hostnames that must never be targeted by outbound webhooks.
+	 */
+	private const FORBIDDEN_HOSTNAMES = array(
+		'localhost',
+		'localhost.localdomain',
+		'ip6-localhost',
+		'ip6-loopback',
+		'metadata.google.internal',
+		'instance-data',
+	);
 
 	/**
 	 * Build comprehensive dictionary of template placeholder variables.
@@ -139,6 +156,265 @@ class Webhook {
 	}
 
 	/**
+	 * Validate whether an IP address is a publicly routable, safe outbound target.
+	 * Blocks RFC1918, Loopback, Link-Local, Cloud Metadata (169.254.169.254),
+	 * CGNAT, IPv6 ULA, 6to4, IPv4-mapped, and Multicast/Reserved addresses.
+	 *
+	 * @param string $ip
+	 * @return bool True if safe/public, False if private/reserved/loopback.
+	 */
+	public static function is_public_safe_ip( string $ip ): bool {
+		$norm_ip = IpResolver::normalize_ip( $ip );
+		if ( empty( $norm_ip ) ) {
+			return false;
+		}
+
+		// Baseline filter_var check with strict flags
+		if ( ! filter_var( $norm_ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+			return false;
+		}
+
+		// IPv4 Validation
+		if ( filter_var( $norm_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			$long = ip2long( $norm_ip );
+			if ( false === $long ) {
+				return false;
+			}
+
+			// 0.0.0.0/8 (Current network)
+			if ( ( $long & 0xFF000000 ) === 0x00000000 ) {
+				return false;
+			}
+
+			// 127.0.0.0/8 (Loopback)
+			if ( ( $long & 0xFF000000 ) === 0x7F000000 ) {
+				return false;
+			}
+
+			// 10.0.0.0/8 (RFC 1918 Class A)
+			if ( ( $long & 0xFF000000 ) === 0x0A000000 ) {
+				return false;
+			}
+
+			// 100.64.0.0/10 (Carrier-Grade NAT RFC 6598)
+			if ( ( $long & 0xFFC00000 ) === 0x64400000 ) {
+				return false;
+			}
+
+			// 172.16.0.0/12 (RFC 1918 Class B)
+			if ( ( $long & 0xFFF00000 ) === 0xAC100000 ) {
+				return false;
+			}
+
+			// 169.254.0.0/16 (Link-Local & Cloud Instance Metadata Service 169.254.169.254)
+			if ( ( $long & 0xFFFF0000 ) === 0xA9FE0000 ) {
+				return false;
+			}
+
+			// 192.0.0.0/24 (IETF Protocol Assignments)
+			if ( ( $long & 0xFFFFFF00 ) === 0xC0000000 ) {
+				return false;
+			}
+
+			// 192.0.2.0/24 (TEST-NET-1)
+			if ( ( $long & 0xFFFFFF00 ) === 0xC0000200 ) {
+				return false;
+			}
+
+			// 192.168.0.0/16 (RFC 1918 Class C)
+			if ( ( $long & 0xFFFF0000 ) === 0xC0A80000 ) {
+				return false;
+			}
+
+			// 198.18.0.0/15 (Network Benchmark Tests)
+			if ( ( $long & 0xFFFE0000 ) === 0xC6120000 ) {
+				return false;
+			}
+
+			// 198.51.100.0/24 (TEST-NET-2)
+			if ( ( $long & 0xFFFFFF00 ) === 0xC6336400 ) {
+				return false;
+			}
+
+			// 203.0.113.0/24 (TEST-NET-3)
+			if ( ( $long & 0xFFFFFF00 ) === 0xCB007100 ) {
+				return false;
+			}
+
+			// 224.0.0.0/4 (Multicast) and 240.0.0.0/4 (Reserved)
+			if ( ( $long & 0xE0000000 ) === 0xE0000000 || ( $long & 0xF0000000 ) === 0xF0000000 ) {
+				return false;
+			}
+
+			// 255.255.255.255 (Broadcast)
+			if ( $long === -1 || ( $long & 0xFFFFFFFF ) === 0xFFFFFFFF ) {
+				return false;
+			}
+
+			return true;
+		}
+
+		// IPv6 Validation
+		if ( filter_var( $norm_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
+			// Handle IPv4-mapped IPv6 e.g. ::ffff:127.0.0.1
+			if ( stripos( $norm_ip, '::ffff:' ) === 0 ) {
+				$ipv4_part = substr( $norm_ip, 7 );
+				if ( filter_var( $ipv4_part, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+					return self::is_public_safe_ip( $ipv4_part );
+				}
+			}
+
+			$binary = inet_pton( $norm_ip );
+			if ( false === $binary || strlen( $binary ) !== 16 ) {
+				return false;
+			}
+
+			// Loopback ::1 (15 zeroes followed by 0x01)
+			if ( $binary === ( str_repeat( "\0", 15 ) . "\x01" ) ) {
+				return false;
+			}
+
+			// Unspecified :: (16 zeroes)
+			if ( $binary === str_repeat( "\0", 16 ) ) {
+				return false;
+			}
+
+			$first_byte  = ord( $binary[0] );
+			$second_byte = ord( $binary[1] );
+
+			// Link-local: fe80::/10 (first byte 0xFE, second byte has top 2 bits 0x80)
+			if ( $first_byte === 0xFE && ( $second_byte & 0xC0 ) === 0x80 ) {
+				return false;
+			}
+
+			// Unique Local Address (ULA): fc00::/7 (first byte 0xFC or 0xFD)
+			if ( ( $first_byte & 0xFE ) === 0xFC ) {
+				return false;
+			}
+
+			// Multicast: ff00::/8 (first byte 0xFF)
+			if ( $first_byte === 0xFF ) {
+				return false;
+			}
+
+			// 6to4: 2002::/16 (first 2 bytes 0x20 0x02) - extract embedded IPv4 in bytes 2-5
+			if ( $binary[0] === "\x20" && $binary[1] === "\x02" ) {
+				$embedded_ipv4 = inet_ntop( substr( $binary, 2, 4 ) );
+				if ( ! self::is_public_safe_ip( $embedded_ipv4 ) ) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Verify that a webhook destination URL is safe against SSRF attacks.
+	 * Resolves ALL DNS A and AAAA records and ensures every resolved IP is public.
+	 *
+	 * @param string $url
+	 * @return bool
+	 */
+	public static function is_safe_webhook_url( string $url ): bool {
+		if ( empty( $url ) ) {
+			return false;
+		}
+
+		$parsed = parse_url( $url );
+		if ( false === $parsed || empty( $parsed['scheme'] ) || empty( $parsed['host'] ) ) {
+			return false;
+		}
+
+		// 1. Strict scheme check: Only http and https
+		$scheme = strtolower( $parsed['scheme'] );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return false;
+		}
+
+		// 2. Reject embedded user/pass authentication credentials
+		if ( ! empty( $parsed['user'] ) || ! empty( $parsed['pass'] ) ) {
+			return false;
+		}
+
+		$host = trim( $parsed['host'] );
+
+		// Strip IPv6 enclosing brackets if present
+		if ( strpos( $host, '[' ) === 0 && substr( $host, -1 ) === ']' ) {
+			$host = substr( $host, 1, -1 );
+		}
+
+		// 3. Reject forbidden hostnames & suffix patterns
+		$lower_host = strtolower( $host );
+		if ( in_array( $lower_host, self::FORBIDDEN_HOSTNAMES, true ) ||
+			 substr( $lower_host, -10 ) === '.localhost' ||
+			 substr( $lower_host, -6 ) === '.local' ||
+			 substr( $lower_host, -9 ) === '.internal' ) {
+			return false;
+		}
+
+		// 4. Resolve and normalize IP addresses
+		$ips_to_check = array();
+
+		// Handle raw decimal or hex integer notation e.g. 2130706433 or 0x7f000001
+		if ( is_numeric( $host ) || preg_match( '/^0x[0-9a-f]+$/i', $host ) ) {
+			$long_val = is_numeric( $host ) ? (float) $host : hexdec( $host );
+			if ( $long_val >= 0 && $long_val <= 4294967295 ) {
+				$converted_ip = long2ip( (int) $long_val );
+				if ( ! empty( $converted_ip ) ) {
+					$ips_to_check[] = $converted_ip;
+				}
+			}
+		} elseif ( preg_match( '/^(0x[0-9a-f]+|\d+)\.(0x[0-9a-f]+|\d+)\.(0x[0-9a-f]+|\d+)\.(0x[0-9a-f]+|\d+)$/i', $host, $m ) ) {
+			// Handle dotted hex/octal e.g. 0x7f.0.0.1 or 0177.0.0.1
+			$p1 = ( stripos( $m[1], '0x' ) === 0 ) ? hexdec( $m[1] ) : ( ( strpos( $m[1], '0' ) === 0 && strlen( $m[1] ) > 1 ) ? octdec( $m[1] ) : (int) $m[1] );
+			$p2 = ( stripos( $m[2], '0x' ) === 0 ) ? hexdec( $m[2] ) : ( ( strpos( $m[2], '0' ) === 0 && strlen( $m[2] ) > 1 ) ? octdec( $m[2] ) : (int) $m[2] );
+			$p3 = ( stripos( $m[3], '0x' ) === 0 ) ? hexdec( $m[3] ) : ( ( strpos( $m[3], '0' ) === 0 && strlen( $m[3] ) > 1 ) ? octdec( $m[3] ) : (int) $m[3] );
+			$p4 = ( stripos( $m[4], '0x' ) === 0 ) ? hexdec( $m[4] ) : ( ( strpos( $m[4], '0' ) === 0 && strlen( $m[4] ) > 1 ) ? octdec( $m[4] ) : (int) $m[4] );
+			$canon_ip = "$p1.$p2.$p3.$p4";
+			if ( filter_var( $canon_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+				$ips_to_check[] = $canon_ip;
+			}
+		} elseif ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			$ips_to_check[] = $host;
+		} else {
+			// Resolve IPv4 (DNS A records)
+			$resolved_v4 = @gethostbynamel( $host );
+			if ( is_array( $resolved_v4 ) ) {
+				$ips_to_check = array_merge( $ips_to_check, $resolved_v4 );
+			}
+
+			// Resolve IPv6 (DNS AAAA records)
+			if ( function_exists( 'dns_get_record' ) ) {
+				$records_v6 = @dns_get_record( $host, DNS_AAAA );
+				if ( is_array( $records_v6 ) ) {
+					foreach ( $records_v6 as $rec ) {
+						if ( ! empty( $rec['ipv6'] ) ) {
+							$ips_to_check[] = $rec['ipv6'];
+						}
+					}
+				}
+			}
+
+			// If DNS resolution returned zero IP addresses, reject
+			if ( empty( $ips_to_check ) ) {
+				return false;
+			}
+		}
+
+		// 5. Inspect EVERY resolved IP against SSRF blacklists (ALL must be public/safe)
+		foreach ( $ips_to_check as $ip ) {
+			if ( ! self::is_public_safe_ip( $ip ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Send a security event notification via configured Webhook with {{variable}} interpolation.
 	 *
 	 * @param string $event_type
@@ -155,11 +431,11 @@ class Webhook {
 		$raw_url = trim( $settings['webhook_url'] );
 		$vars    = self::get_template_variables( $event_type, $details );
 
-		// Interpolate {{variables}} in Webhook URL (for Telegram or GET webhook endpoints)
-		$webhook_url = self::replace_variables( $raw_url, $vars, false );
+		// Interpolate {{variables}} in Webhook URL (with URL-encoding for query string safety)
+		$webhook_url = self::replace_variables( $raw_url, $vars, true );
 		$webhook_url = esc_url_raw( $webhook_url );
 
-		if ( empty( $webhook_url ) || ! filter_var( $webhook_url, FILTER_VALIDATE_URL ) ) {
+		if ( ! self::is_safe_webhook_url( $webhook_url ) ) {
 			return false;
 		}
 
@@ -296,13 +572,15 @@ class Webhook {
 				break;
 		}
 
-		$response = wp_remote_post(
+		$response = wp_safe_remote_post(
 			$webhook_url,
 			array(
-				'timeout'   => 5,
-				'headers'   => $headers,
-				'body'      => $body,
-				'sslverify' => true,
+				'timeout'            => 5,
+				'redirection'        => 0, // Prevent redirect-based SSRF pivots
+				'reject_unsafe_urls' => true, // Enforce WordPress unsafe URL rejection
+				'headers'            => $headers,
+				'body'               => $body,
+				'sslverify'          => true,
 			)
 		);
 
@@ -331,6 +609,13 @@ class Webhook {
 			);
 		}
 
+		if ( ! self::is_safe_webhook_url( $raw_url ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Invalid or unsafe Webhook URL: Requests to localhost, private IP subnets, and cloud metadata services are blocked for security.', 'locasentinel' ),
+			);
+		}
+
 		$sample_details = array(
 			'user_login'        => wp_get_current_user()->user_login ?: 'admin_demo',
 			'user_email'        => wp_get_current_user()->user_email ?: 'admin@example.com',
@@ -355,10 +640,10 @@ class Webhook {
 		);
 
 		$temp_settings = get_option( 'ip2loc_settings', array() );
-		$temp_settings['enable_webhooks']          = 1;
-		$temp_settings['webhook_url']              = $raw_url;
-		$temp_settings['webhook_type']             = $type;
-		$temp_settings['webhook_custom_payload']   = $custom_payload;
+		$temp_settings['enable_webhooks']        = 1;
+		$temp_settings['webhook_url']            = $raw_url;
+		$temp_settings['webhook_type']           = $type;
+		$temp_settings['webhook_custom_payload'] = $custom_payload;
 		update_option( 'ip2loc_settings', $temp_settings );
 
 		$result = self::send_event( 'IMPOSSIBLE_TRAVEL_TEST', $sample_details );

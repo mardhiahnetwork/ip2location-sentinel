@@ -129,10 +129,6 @@ class Firewall {
 
 		$ip = IpResolver::get_client_ip();
 
-		if ( Captcha::has_clearance( $ip ) ) {
-			return $commentdata;
-		}
-
 		$result = RuleEngine::evaluate( $ip );
 
 		if ( $result['blocked'] ) {
@@ -466,8 +462,10 @@ class Firewall {
 
 		// Verified genuine search engine bots never get rate-limited
 		$raw_ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
-		if ( ! empty( $settings['allow_search_bots'] ) && UserAgent::is_search_engine( $raw_ua ) ) {
-			return;
+		if ( ! empty( $settings['allow_search_bots'] ) && ! empty( $raw_ua ) && UserAgent::is_search_engine( $raw_ua ) ) {
+			if ( UserAgent::verify_search_bot_rdns( $ip, $raw_ua ) ) {
+				return;
+			}
 		}
 
 		$raw_path = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/';

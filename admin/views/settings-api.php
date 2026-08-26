@@ -19,10 +19,14 @@ $del_on_uninst  = ! empty( $settings['delete_data_on_uninstall'] );
 
 <div class="wrap ip2loc-wrap">
 	<div class="ip2loc-header-wrap">
-		<h1><?php esc_html_e( 'API & Settings', 'locasentinel' ); ?></h1>
-		<div class="ip2loc-autosave-badge" id="ip2loc_autosave_badge" style="display:none;">
-			<span class="dashicons dashicons-saved"></span>
-			<span class="ip2loc-badge-text"><?php esc_html_e( 'All changes saved', 'locasentinel' ); ?></span>
+		<div class="ip2loc-header-left">
+			<h1><?php esc_html_e( 'API & Settings', 'locasentinel' ); ?></h1>
+		</div>
+		<div class="ip2loc-header-right">
+			<button type="submit" form="ip2loc_api_form" class="button button-primary ip2loc-save-btn" id="ip2loc_save_btn">
+				<span class="dashicons dashicons-saved"></span>
+				<span class="ip2loc-save-text"><?php esc_html_e( 'Save Changes', 'locasentinel' ); ?></span>
+			</button>
 		</div>
 	</div>
 	<hr class="wp-header-end">

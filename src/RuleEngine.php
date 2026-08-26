@@ -17,6 +17,19 @@ class RuleEngine {
 	/**
 	 * Evaluate incoming IP and Geolocation data against active firewall rules.
 	 *
+	 * Precedence Hierarchy:
+	 * 1. IP Whitelist (Immediate Allow)
+	 * 2. IP Blacklist (Immediate Block)
+	 * 3. Geolocation & ASN Lookup (Fail-Safe / Fail-Open)
+	 * 4. Localhost / Private Network Bypass
+	 * 5. Explicit ASN / ISP Blacklist (Always Block)
+	 * 6. Verified Search Engine Crawler Exemption (rDNS & Forward DNS Verified)
+	 * 7. Proxy / VPN / Data Center Detection
+	 * 8. Country Rules (Whitelist / Blacklist)
+	 * 9. Region, City, Zip Code Blocklists
+	 * 10. Secondary Non-Search Crawler Allowlist (Social, SEO, AI, Feed)
+	 * 11. Default Allow
+	 *
 	 * @param string     $ip
 	 * @param array|null $geo_data
 	 * @return array Evaluation result
@@ -28,7 +41,7 @@ class RuleEngine {
 
 		$settings = get_option( 'ip2loc_settings', array() );
 
-		// 1. Check IP Whitelist
+		// 1. Check IP Whitelist (Highest precedence)
 		$whitelist_ips = self::parse_list( $settings['whitelist_ips'] ?? '' );
 		foreach ( $whitelist_ips as $allowed_range ) {
 			if ( IpResolver::ip_in_range( $ip, $allowed_range ) ) {
@@ -41,7 +54,7 @@ class RuleEngine {
 			}
 		}
 
-		// 2. Check IP Blacklist
+		// 2. Check IP Blacklist (Always block, cannot be bypassed)
 		$blacklist_ips = self::parse_list( $settings['blacklist_ips'] ?? '' );
 		foreach ( $blacklist_ips as $blocked_range ) {
 			if ( IpResolver::ip_in_range( $ip, $blocked_range ) ) {
@@ -54,7 +67,7 @@ class RuleEngine {
 			}
 		}
 
-		// Fetch Geolocation if not already provided
+		// 3. Fetch Geolocation if not already provided
 		if ( ! is_array( $geo_data ) || empty( $geo_data['country_code'] ) ) {
 			$lookup = ApiClient::lookup( $ip );
 			if ( is_wp_error( $lookup ) ) {
@@ -77,7 +90,7 @@ class RuleEngine {
 			$geo_data = $lookup;
 		}
 
-		// Always allow local/loopback IPs
+		// 4. Always allow local/loopback IPs
 		if ( ! empty( $geo_data['is_private'] ) ) {
 			return array(
 				'blocked' => false,
@@ -87,13 +100,59 @@ class RuleEngine {
 			);
 		}
 
-		// 3. Extended & Customizable Crawler Allowlist
-		$crawler_allow = self::evaluate_crawlers( $ip, $settings, $geo_data );
-		if ( null !== $crawler_allow ) {
-			return $crawler_allow;
+		// 5. Explicit ASN / AS Organization Blacklist (Takes precedence over crawler allowlist)
+		$blocked_asns = self::parse_list( $settings['blocked_asns'] ?? '' );
+		if ( ! empty( $blocked_asns ) ) {
+			$raw_asn    = (string) ( $geo_data['asn'] ?? '' );
+			$raw_as     = (string) ( $geo_data['as'] ?? $geo_data['as_name'] ?? '' );
+			$client_asn = preg_replace( '/[^0-9]/', '', $raw_asn );
+			$client_org = strtolower( $raw_as );
+
+			foreach ( $blocked_asns as $asn_rule ) {
+				$asn_rule_trimmed = trim( $asn_rule );
+
+				// Numeric ASN rule (e.g. "15169" or "AS15169")
+				if ( preg_match( '/^(?:AS)?([0-9]+)$/i', $asn_rule_trimmed, $matches ) ) {
+					$clean_rule_asn = $matches[1];
+					if ( ! empty( $clean_rule_asn ) && $clean_rule_asn === $client_asn ) {
+						return array(
+							'blocked' => true,
+							'reason'  => sprintf( 'ASN Blocked: AS%s (%s)', $raw_asn, $raw_as ),
+							'rule'    => 'asn_block',
+							'geo'     => $geo_data,
+						);
+					}
+				} else {
+					// Textual ISP / Organization name match
+					if ( ! empty( $client_org ) && stripos( $client_org, $asn_rule_trimmed ) !== false ) {
+						return array(
+							'blocked' => true,
+							'reason'  => sprintf( 'ISP/Organization Blocked: %s', $raw_as ),
+							'rule'    => 'asn_org_block',
+							'geo'     => $geo_data,
+						);
+					}
+				}
+			}
 		}
 
-		// 4. Proxy / VPN / Tor Detection
+		// 6. Verified Search Engine Crawler Exemption (rDNS & Forward DNS Cryptographically/DNS Anchored)
+		$raw_ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+		if ( ! empty( $settings['allow_search_bots'] ) && ! empty( $raw_ua ) && UserAgent::is_search_engine( $raw_ua ) ) {
+			if ( UserAgent::verify_search_bot_rdns( $ip, $raw_ua ) ) {
+				$ua_info  = UserAgent::parse( $raw_ua );
+				$bot_name = ! empty( $ua_info['bot_name'] ) ? $ua_info['bot_name'] : 'Search Engine';
+				return array(
+					'blocked' => false,
+					'reason'  => sprintf( 'Allowed Verified Search Engine Crawler: %s', $bot_name ),
+					'rule'    => 'bot_search_engine_allow',
+					'geo'     => $geo_data,
+				);
+			}
+			// Unverified or spoofed Googlebot/Bingbot User-Agent proceeds to security checks below
+		}
+
+		// 7. Proxy / VPN / Tor Detection
 		if ( ! empty( $settings['block_proxies'] ) && ! empty( $geo_data['is_proxy'] ) ) {
 			return array(
 				'blocked' => true,
@@ -103,11 +162,11 @@ class RuleEngine {
 			);
 		}
 
-		// 5. Country Rules (Whitelist vs Blacklist)
+		// 8. Country Rules (Whitelist vs Blacklist)
 		$country_mode = $settings['country_mode'] ?? 'blacklist';
 		$country_list = isset( $settings['countries'] ) && is_array( $settings['countries'] ) ? array_map( 'strtoupper', $settings['countries'] ) : array();
 
-		$client_country = strtoupper( $geo_data['country_code'] );
+		$client_country = strtoupper( $geo_data['country_code'] ?? '' );
 
 		if ( ! empty( $country_list ) ) {
 			if ( $country_mode === 'blacklist' ) {
@@ -133,7 +192,7 @@ class RuleEngine {
 			}
 		}
 
-		// 6. Region / State Blocklist
+		// 9. Region / State Blocklist
 		$blocked_regions = self::parse_list( $settings['blocked_regions'] ?? '' );
 		if ( ! empty( $blocked_regions ) && ! empty( $geo_data['region_name'] ) ) {
 			foreach ( $blocked_regions as $region ) {
@@ -148,7 +207,7 @@ class RuleEngine {
 			}
 		}
 
-		// 7. City Blocklist
+		// 10. City Blocklist
 		$blocked_cities = self::parse_list( $settings['blocked_cities'] ?? '' );
 		if ( ! empty( $blocked_cities ) && ! empty( $geo_data['city_name'] ) ) {
 			foreach ( $blocked_cities as $city ) {
@@ -163,7 +222,7 @@ class RuleEngine {
 			}
 		}
 
-		// 8. Zip / Postal Code Blocklist
+		// 11. Zip / Postal Code Blocklist
 		$blocked_zips = self::parse_list( $settings['blocked_zips'] ?? '' );
 		if ( ! empty( $blocked_zips ) && ! empty( $geo_data['zip_code'] ) ) {
 			foreach ( $blocked_zips as $zip ) {
@@ -178,35 +237,10 @@ class RuleEngine {
 			}
 		}
 
-		// 9. ASN / AS Organization Blocklist
-		$blocked_asns = self::parse_list( $settings['blocked_asns'] ?? '' );
-		if ( ! empty( $blocked_asns ) ) {
-			$raw_asn     = (string) ( $geo_data['asn'] ?? '' );
-			$raw_as      = (string) ( $geo_data['as'] ?? $geo_data['as_name'] ?? '' );
-			$client_asn  = preg_replace( '/[^0-9]/', '', $raw_asn );
-			$client_org  = strtolower( $raw_as );
-
-			foreach ( $blocked_asns as $asn_rule ) {
-				$clean_rule_asn = preg_replace( '/[^0-9]/', '', $asn_rule );
-
-				if ( ! empty( $clean_rule_asn ) && $clean_rule_asn === $client_asn ) {
-					return array(
-						'blocked' => true,
-						'reason'  => sprintf( 'ASN Blocked: AS%s (%s)', $raw_asn, $raw_as ),
-						'rule'    => 'asn_block',
-						'geo'     => $geo_data,
-					);
-				}
-
-				if ( ! empty( $client_org ) && stripos( $client_org, strtolower( $asn_rule ) ) !== false ) {
-					return array(
-						'blocked' => true,
-						'reason'  => sprintf( 'ISP/Organization Blocked: %s', $raw_as ),
-						'rule'    => 'asn_org_block',
-						'geo'     => $geo_data,
-					);
-				}
-			}
+		// 12. Secondary Bot Allowlist (Social, SEO, AI, Feed - only applicable after security checks pass)
+		$secondary_crawler = self::evaluate_secondary_crawlers( $raw_ua, $settings, $geo_data );
+		if ( null !== $secondary_crawler ) {
+			return $secondary_crawler;
 		}
 
 		return array(
@@ -262,15 +296,15 @@ class RuleEngine {
 	}
 
 	/**
-	 * Evaluate incoming request against active crawler and bot allowlist rules.
+	 * Evaluate secondary non-search engine bots (Social, SEO, AI, Feed)
+	 * Only applied after proxy, country, region, city, zip, and ASN checks have passed.
 	 *
-	 * @param string $ip
+	 * @param string $raw_ua
 	 * @param array  $settings
 	 * @param array  $geo_data
 	 * @return array|null
 	 */
-	public static function evaluate_crawlers( string $ip, array $settings, array $geo_data ): ?array {
-		$raw_ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+	private static function evaluate_secondary_crawlers( string $raw_ua, array $settings, array $geo_data ): ?array {
 		if ( empty( $raw_ua ) ) {
 			return null;
 		}
@@ -278,22 +312,7 @@ class RuleEngine {
 		$ua_info  = UserAgent::parse( $raw_ua );
 		$bot_name = ! empty( $ua_info['bot_name'] ) ? $ua_info['bot_name'] : 'Bot / Crawler';
 
-		// A. Major Search Engine Crawlers (Google, Bing, Yahoo, Baidu, Yandex, DuckDuckGo, Applebot)
-		if ( ! empty( $settings['allow_search_bots'] ) && UserAgent::is_search_engine( $raw_ua ) ) {
-			// Optional Reverse DNS Anti-Spoofing Verification
-			if ( ! empty( $settings['bot_rdns_verify'] ) && ! UserAgent::verify_search_bot_rdns( $ip, $raw_ua ) ) {
-				// Spoofed user-agent detected! Do not bypass firewall
-			} else {
-				return array(
-					'blocked' => false,
-					'reason'  => sprintf( 'Allowed Search Engine Crawler: %s', $bot_name ),
-					'rule'    => 'bot_search_engine_allow',
-					'geo'     => $geo_data,
-				);
-			}
-		}
-
-		// B. Social Media Previewers (Facebook, Twitter/X, LinkedIn, WhatsApp, Telegram, Discord, Slack)
+		// Social Media Previewers (Facebook, Twitter/X, LinkedIn, WhatsApp, Telegram, Discord, Slack)
 		if ( ! empty( $settings['allow_social_bots'] ) && UserAgent::is_social_bot( $raw_ua ) ) {
 			return array(
 				'blocked' => false,
@@ -303,7 +322,7 @@ class RuleEngine {
 			);
 		}
 
-		// C. SEO & Uptime Monitoring Bots (Ahrefs, Semrush, Moz, UptimeRobot, Pingdom)
+		// SEO & Uptime Monitoring Bots (Ahrefs, Semrush, Moz, UptimeRobot, Pingdom)
 		if ( ! empty( $settings['allow_seo_bots'] ) && UserAgent::is_seo_bot( $raw_ua ) ) {
 			return array(
 				'blocked' => false,
@@ -313,7 +332,7 @@ class RuleEngine {
 			);
 		}
 
-		// D. AI & LLM Crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Bytespider)
+		// AI & LLM Crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Bytespider)
 		if ( ! empty( $settings['allow_ai_bots'] ) && UserAgent::is_ai_bot( $raw_ua ) ) {
 			return array(
 				'blocked' => false,
@@ -323,7 +342,7 @@ class RuleEngine {
 			);
 		}
 
-		// E. Feed & RSS Readers (Feedly, Inoreader, NewsBlur)
+		// Feed & RSS Readers (Feedly, Inoreader, NewsBlur)
 		if ( ! empty( $settings['allow_feed_bots'] ) && UserAgent::is_feed_bot( $raw_ua ) ) {
 			return array(
 				'blocked' => false,
@@ -333,7 +352,7 @@ class RuleEngine {
 			);
 		}
 
-		// F. Custom User-Agent Substrings & Regex Patterns
+		// Custom User-Agent Substrings & Regex Patterns
 		if ( ! empty( $settings['allowed_crawlers_custom'] ) ) {
 			if ( UserAgent::matches_custom_crawler( $raw_ua, $settings['allowed_crawlers_custom'] ) ) {
 				return array(
