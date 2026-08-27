@@ -109,7 +109,7 @@ class RedisDriver {
 			}
 		}
 
-		return get_transient( 'ip2loc_' . $key );
+		return function_exists( 'get_transient' ) ? get_transient( 'ip2loc_' . $key ) : false;
 	}
 
 	/**
@@ -130,7 +130,7 @@ class RedisDriver {
 			}
 		}
 
-		return set_transient( 'ip2loc_' . $key, $value, $ttl );
+		return function_exists( 'set_transient' ) ? set_transient( 'ip2loc_' . $key, $value, $ttl ) : false;
 	}
 
 	/**
@@ -154,6 +154,10 @@ class RedisDriver {
 			}
 		}
 
+		if ( ! function_exists( 'get_transient' ) || ! function_exists( 'set_transient' ) ) {
+			return 1;
+		}
+
 		$current = (int) get_transient( 'ip2loc_' . $key );
 		$new_val = $current + 1;
 		set_transient( 'ip2loc_' . $key, $new_val, $ttl );
@@ -175,6 +179,6 @@ class RedisDriver {
 			}
 		}
 
-		return delete_transient( 'ip2loc_' . $key );
+		return function_exists( 'delete_transient' ) ? delete_transient( 'ip2loc_' . $key ) : false;
 	}
 }

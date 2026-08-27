@@ -18,9 +18,11 @@ $settings = get_option( 'ip2loc_settings', array() );
 if ( ! empty( $settings['delete_data_on_uninstall'] ) ) {
 	global $wpdb;
 
-	// 1. Drop Audit Logs Table
-	$table_name = $wpdb->prefix . 'ip2location_logs';
+	// 1. Drop Custom Tables
+	$table_name    = $wpdb->prefix . 'ip2location_logs';
+	$captcha_table = $wpdb->prefix . 'ip2location_captcha_locks';
 	$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$captcha_table}" );
 
 	// 2. Delete Plugin Options
 	delete_option( 'ip2loc_settings' );
