@@ -5,6 +5,18 @@
 
 ---
 
+# Disclaimer
+> - The project is a demo/contest implementation.
+> - It is not a replacement for a WAF, DDoS protection, or full MFA.
+> - Geolocation depends on IP2Location data/API availability.
+> - CAPTCHA clearance is tied to the client IP.
+> - Changing IP addresses can require a new CAPTCHA challenge.
+> - Trusted proxy/CDN configuration affects IP detection.
+> - Fail-open and fail-safe modes have different security implications.
+> - Impossible Travel is an additional authentication signal.
+
+---
+
 ## 🏆 IP2Location Programming Contest 2026
 
 **LocaSentinel** was created specifically for the **IP2Location Programming Contest 2026**. It is designed to leverage the **IP2Location.io Free API** (supporting free tier keys with 50,000 monthly lookups), featuring:
